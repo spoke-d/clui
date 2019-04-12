@@ -15,6 +15,12 @@ import (
 	"github.com/spoke-d/clui/style"
 )
 
+// Formatter takes a value and then writes the output or returns an error during
+// formatting.
+type Formatter interface {
+	Write(interface{}) (string, error)
+}
+
 // UI is an interface for interacting with the terminal, or "interface"
 // of a CLI.
 type UI interface {
@@ -26,8 +32,11 @@ type UI interface {
 	// the keystrokes to the terminal.
 	AskSecret(string) (string, error)
 
+	// Formatter will take the output and attempt to format it correctly
+	Formatter(Formatter)
+
 	// Output is called for normal standard output.
-	Output(string)
+	Output(interface{})
 
 	// Info is called for information related to the previous output.
 	// In general this may be the exact same as Output, but this gives
@@ -48,6 +57,7 @@ type BasicUI struct {
 	Reader      io.Reader
 	Writer      io.Writer
 	ErrorWriter io.Writer
+	formatter   Formatter
 }
 
 // NewBasicUI creates a new BasicUI with dependencies.
@@ -89,8 +99,20 @@ func (u *BasicUI) Info(message string) {
 	u.Output(message)
 }
 
+// Formatter will take the output and attempt to format it correctly
+func (u *BasicUI) Formatter(formatter Formatter) {
+	u.formatter = formatter
+}
+
 // Output is called for normal standard output.
-func (u *BasicUI) Output(message string) {
+func (u *BasicUI) Output(message interface{}) {
+	if formatter := u.formatter; formatter != nil {
+		output, err := formatter.Write(message)
+		if err != nil {
+			u.Error(err.Error())
+		}
+		message = output
+	}
 	fmt.Fprintln(u.Writer, message)
 }
 
@@ -156,6 +178,7 @@ type ColorUI struct {
 	OutputColor                      *style.Style
 	InfoColor, ErrorColor, WarnColor *style.Style
 	UI                               UI
+	formatter                        Formatter
 }
 
 // NewColorUI creates a new ColorUI with dependencies.
@@ -177,9 +200,21 @@ func (u *ColorUI) AskSecret(query string) (string, error) {
 	return u.UI.AskSecret(u.format(query, u.OutputColor))
 }
 
+// Formatter will take the output and attempt to format it correctly
+func (u *ColorUI) Formatter(formatter Formatter) {
+	u.formatter = formatter
+}
+
 // Output is called for normal standard output.
-func (u *ColorUI) Output(message string) {
-	u.UI.Output(u.format(message, u.OutputColor))
+func (u *ColorUI) Output(message interface{}) {
+	if formatter := u.formatter; formatter != nil {
+		output, err := formatter.Write(message)
+		if err != nil {
+			u.Error(err.Error())
+		}
+		message = output
+	}
+	u.UI.Output(u.format(fmt.Sprintf("%v", message), u.OutputColor))
 }
 
 // Info is called for information related to the previous output.

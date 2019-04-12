@@ -6,6 +6,7 @@ package mocks
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	clui "github.com/spoke-d/clui"
 	reflect "reflect"
 )
 
@@ -68,6 +69,16 @@ func (mr *MockUIMockRecorder) Error(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Error", reflect.TypeOf((*MockUI)(nil).Error), arg0)
 }
 
+// Formatter mocks base method
+func (m *MockUI) Formatter(arg0 clui.Formatter) {
+	m.ctrl.Call(m, "Formatter", arg0)
+}
+
+// Formatter indicates an expected call of Formatter
+func (mr *MockUIMockRecorder) Formatter(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Formatter", reflect.TypeOf((*MockUI)(nil).Formatter), arg0)
+}
+
 // Info mocks base method
 func (m *MockUI) Info(arg0 string) {
 	m.ctrl.Call(m, "Info", arg0)
@@ -79,7 +90,7 @@ func (mr *MockUIMockRecorder) Info(arg0 interface{}) *gomock.Call {
 }
 
 // Output mocks base method
-func (m *MockUI) Output(arg0 string) {
+func (m *MockUI) Output(arg0 interface{}) {
 	m.ctrl.Call(m, "Output", arg0)
 }
 
