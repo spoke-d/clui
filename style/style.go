@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spoke-d/clui/isatty"
+	"github.com/mattn/go-isatty"
 )
 
 var (

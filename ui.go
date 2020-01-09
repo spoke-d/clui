@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spoke-d/clui/ask"
-	"github.com/spoke-d/clui/isatty"
 	"github.com/spoke-d/clui/style"
 )
 
