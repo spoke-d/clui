@@ -19,12 +19,14 @@ type FlagSet struct {
 	src, args, flags []string
 }
 
-// NewFlagSet returns a new, empty flag set with the specified name and error
+// New returns a new, empty flag set with the specified name and error
 // handling property.
-func NewFlagSet(name string, errorHandling flag.ErrorHandling) *FlagSet {
-	return &FlagSet{
+func New(name string, errorHandling flag.ErrorHandling) *FlagSet {
+	flag := &FlagSet{
 		flag: flag.NewFlagSet(name, errorHandling),
 	}
+	flag.SetOutput(ioutil.Discard)
+	return flag
 }
 
 // SetOutput sets the destination for usage and error messages.

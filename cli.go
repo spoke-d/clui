@@ -4,61 +4,194 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"os"
 	"regexp"
-	"sort"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/pkg/errors"
-	"github.com/spoke-d/clui/install"
+	"github.com/spoke-d/clui/autocomplete"
+	"github.com/spoke-d/clui/autocomplete/fsys"
+	"github.com/spoke-d/clui/autocomplete/install"
+	"github.com/spoke-d/clui/commands"
+	"github.com/spoke-d/clui/flagset"
+	"github.com/spoke-d/clui/group"
+	"github.com/spoke-d/clui/help"
 	"github.com/spoke-d/clui/radix"
+	"github.com/spoke-d/clui/ui"
+	task "github.com/spoke-d/task/group"
 )
 
-// Errno represents a error constants that can be reutrned from the CLI
-type Errno int
+// UI is an interface for interacting with the terminal, or "interface"
+// of a CLI.
+type UI interface {
+	// Ask asks the user for input using the given query. The response is
+	// returned as the given string, or an error.
+	Ask(string) (string, error)
 
-// Code converts the Errno back into an int when type inference fails.
-func (e Errno) Code() int {
-	return int(e)
+	// AskSecret asks the user for input using the given query, but does not echo
+	// the keystrokes to the terminal.
+	AskSecret(string) (string, error)
+
+	// Output is called for normal standard output.
+	Output(*ui.Template, interface{}) error
+
+	// Info is called for information related to the previous output.
+	// In general this may be the exact same as Output, but this gives
+	// UI implementors some flexibility with output formats.
+	Info(string)
+
+	// Error is used for any error messages that might appear on standard
+	// error.
+	Error(string)
 }
 
-const (
-	// EOK is non-standard representation of a success
-	EOK Errno = 0
+// Command is a runnable sub-command of CLI.
+type Command interface {
 
-	// EPerm represents an operation not permitted
-	EPerm Errno = 1
+	// Flags returns the FlagSet associated with the command. All the flags are
+	// parsed before running the command.
+	FlagSet() *flagset.FlagSet
 
-	// EKeyExpired is outside of POSIX 1, represents unknown error.
-	EKeyExpired Errno = 127
-)
+	// Help should return a long-form help text that includes the command-line
+	// usage. A brief few sentences explaining the function of the command, and
+	// the complete list of flags the command accepts.
+	Help() string
 
-// CLIOptions allows the changing of CLI options
-type CLIOptions struct {
-	// HelpFunc is the function called to generate the generic help text that is
-	// shown. If help must be shown for the CLI that doesn't pertain to a
-	// specific command.
-	HelpFunc HelpFunc
+	// Synopsis should return a one-line, short synopsis of the command.
+	// This should be short (50 characters of less ideally).
+	Synopsis() string
 
-	// Installer
-	Installer AutoCompleteInstaller
-
-	UI UI
+	// Run should run the actual command with the given CLI instance and
+	// command-line arguments. It should return the exit status when it is
+	// finished.
+	//
+	// There are a handful of special exit codes that can return documented
+	// behavioral changes.
+	Run(*task.Group)
 }
 
-// Build a CLI from the CLIOptions
-func (c CLIOptions) Build(cli *CLI) {
-	if c.HelpFunc != nil {
-		cli.helpFunc = c.HelpFunc
+// AutoCompleter is an interface to be implemented to perform the autocomplete
+// installation and un-installation with a CLI.
+//
+// This interface is not exported because it only exists for unit tests
+// to be able to test that the installation is called properly.
+type AutoCompleter interface {
+	// Complete a command from completion line in environment variable,
+	// and print out the complete options.
+	// Returns success if the completion ran or if the cli matched
+	// any of the given flags, false otherwise
+	Complete(string) ([]string, bool)
+
+	// Install a command into the host using the Installer.
+	// Returns an error if there is an error whilst installing.
+	Install(string) error
+
+	// Uninstall the command from the host using the Installer.
+	// Returns an error if there is an error whilst it's uninstalling.
+	Uninstall(string) error
+}
+
+// CLIOptions represents a way to set optional values to a CLI option.
+// The CLIOptions shows what options are available to change.
+type CLIOptions interface {
+	SetHelpFunc(help.Func)
+	SetAutoCompleter(AutoCompleter)
+	SetUI(UI)
+	SetFileSystem(fsys.FileSystem)
+}
+
+// CLIOption captures a tweak that can be applied to the CLI.
+type CLIOption func(CLIOptions)
+
+type cli struct {
+	helpFunc      help.Func
+	autoCompleter AutoCompleter
+	fileSystem    fsys.FileSystem
+	ui            UI
+}
+
+func (s *cli) SetHelpFunc(p help.Func) {
+	s.helpFunc = p
+}
+
+func (s *cli) HelpFunc(name string) help.Func {
+	if s.helpFunc == nil {
+		return help.BasicFunc(name)
 	}
-	if c.Installer != nil {
-		cli.autoComplete.installer = c.Installer
+	return s.helpFunc
+}
+
+func (s *cli) SetAutoCompleter(p AutoCompleter) {
+	s.autoCompleter = p
+}
+
+func (s *cli) SetFileSystem(p fsys.FileSystem) {
+	s.fileSystem = p
+}
+
+func (s *cli) AutoCompleter(group *group.Group, fs fsys.FileSystem) AutoCompleter {
+	if s.autoCompleter == nil {
+		user, err := install.CurrentUser()
+		if err != nil {
+			return nil
+		}
+		installer, err := install.New(
+			install.OptionShell(install.Bash(install.OptionUser(user), install.OptionFileSystem(fs))),
+			install.OptionShell(install.Zsh(install.OptionUser(user), install.OptionFileSystem(fs))),
+		)
+		if err != nil {
+			return nil
+		}
+		return autocomplete.New(autocomplete.OptionGroup(group),
+			autocomplete.OptionInstaller(installer),
+		)
 	}
-	if c.UI != nil {
-		cli.ui = c.UI
-		cli.autoComplete.ui = c.UI
+	return s.autoCompleter
+}
+
+func (s *cli) SetUI(p UI) {
+	s.ui = p
+}
+
+func (s *cli) UI() UI {
+	if s.ui == nil {
+		return ui.NewBasicUI(os.Stdin, os.Stdout, os.Stderr)
+	}
+	return s.ui
+}
+
+// OptionHelpFunc allows the setting a HelpFunc option to configure the cli.
+func OptionHelpFunc(i help.Func) CLIOption {
+	return func(opt CLIOptions) {
+		opt.SetHelpFunc(i)
 	}
 }
+
+// OptionAutoCompleter allows the setting a AutoCompleter option to configure
+// the cli.
+func OptionAutoCompleter(i AutoCompleter) CLIOption {
+	return func(opt CLIOptions) {
+		opt.SetAutoCompleter(i)
+	}
+}
+
+// OptionUI allows the setting a UI option to configure the cli.
+func OptionUI(i UI) CLIOption {
+	return func(opt CLIOptions) {
+		opt.SetUI(i)
+	}
+}
+
+// OptionFileSystem allows the setting a FileSystem option to configure the cli.
+func OptionFileSystem(i fsys.FileSystem) CLIOption {
+	return func(opt CLIOptions) {
+		opt.SetFileSystem(i)
+	}
+}
+
+// CommandFn defines a function for constructing a command.
+type CommandFn func(UI) Command
 
 // CLI contains the state necessary to run commands and parse the command line
 // arguments
@@ -68,18 +201,12 @@ func (c CLIOptions) Build(cli *CLI) {
 // subCommand.
 // In this example, it would be "foo bar"
 type CLI struct {
-
-	// Name defines the name of the CLI
-	name string
-
-	// Version of the CLI
+	name    string
 	version string
+	header  string
 
-	// Header to output
-	header string
-
-	// Default ui
-	ui UI
+	ui            UI
+	autoCompleter AutoCompleter
 
 	// HelpFunc and HelpWriter are used to output help information, if
 	// requested.
@@ -90,49 +217,45 @@ type CLI struct {
 	//
 	// HelpWriter is the Writer where the help text is outputted to. If not
 	// specified, it will default to Stderr.
-	helpFunc HelpFunc
+	helpFunc help.Func
 
-	commands     *Registry
+	commands     *group.Group
 	commandFlags []string
 
 	subCommand     string
 	subCommandArgs []string
 
-	// AutoComplete
-	autoComplete *AutoComplete
-
 	// These are special global flags
-	isHelp, isVersion                              bool
-	isAutoCompleteInstall, isAutoCompleteUninstall bool
+	isHelp, isVersion                  bool
+	requiresInstall, requiresUninstall bool
+	requiresNoColor                    bool
 }
 
-// NewCLI returns a new CLI instance with sensible default.
-func NewCLI(name, version, header string, options ...CLIOptions) *CLI {
-	registry := NewRegistry()
-	cli := &CLI{
-		name:     name,
-		version:  version,
-		header:   header,
-		ui:       NewNopUI(),
-		helpFunc: BasicHelpFunc(name),
-		commands: registry,
-		autoComplete: NewAutoComplete(
-			NewNopUI(),
-			install.NewNop(),
-			registry,
-		),
+// New returns a new CLI instance with sensible default.
+func New(name, version, header string, options ...CLIOption) *CLI {
+	opt := new(cli)
+	for _, option := range options {
+		option(opt)
 	}
 
-	for _, v := range options {
-		v.Build(cli)
-	}
+	store := group.New(group.OptionPlaceHolder(func(s string) group.Command {
+		return commands.NewText(s, TemplatePlaceHolder)
+	}))
 
-	return cli
+	return &CLI{
+		name:          name,
+		version:       version,
+		header:        header,
+		ui:            opt.UI(),
+		helpFunc:      opt.HelpFunc(name),
+		commands:      store,
+		autoCompleter: opt.AutoCompleter(store, opt.fileSystem),
+	}
 }
 
-// AddCommand inserts a new command to the CLI.
-func (c *CLI) AddCommand(key string, cmd Command) error {
-	return c.commands.Add(key, cmd)
+// Add inserts a new command to the CLI.
+func (c *CLI) Add(key string, cmdFn CommandFn) error {
+	return c.commands.Add(key, cmdFn(c.ui))
 }
 
 // Run runs the actual CLI bases on the arguments given.
@@ -145,7 +268,7 @@ func (c *CLI) Run(args []string) (Errno, error) {
 		return EPerm, err
 	}
 
-	if c.isAutoCompleteInstall && c.isAutoCompleteUninstall {
+	if c.requiresInstall && c.requiresUninstall {
 		return EPerm, fmt.Errorf("both autocomplete flags can not be used at the same time")
 	}
 
@@ -153,13 +276,15 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	// first before anything else since its possible to be autocompleting
 	// -help or -version or other flags and we want to show completions
 	// and not actually write the help or version.
-	if c.autoComplete.Complete() {
-		return EOK, nil
+	// TODO: Get this from options
+	if commands, ok := c.autoCompleter.Complete(autocomplete.TerminalLine()); ok {
+		template := ui.NewTemplate(TemplateComplete)
+		return EOK, c.ui.Output(template, commands)
 	}
 
 	// Just show the version and exit if instructed.
 	if c.isVersion && c.version != "" {
-		return c.writeHelpString(c.version, 0)
+		return c.writeVersion(c.version)
 	}
 
 	// Just print the help when only '-h' or '--help' is passed
@@ -176,13 +301,13 @@ func (c *CLI) Run(args []string) (Errno, error) {
 		return EPerm, fmt.Errorf("name not set %q", c.name)
 	}
 
-	if c.isAutoCompleteInstall {
-		if err := c.autoComplete.Install(c.name); err != nil {
+	if c.requiresInstall {
+		if err := c.autoCompleter.Install(c.name); err != nil {
 			return EPerm, err
 		}
 	}
-	if c.isAutoCompleteUninstall {
-		if err := c.autoComplete.Uninstall(c.name); err != nil {
+	if c.requiresUninstall {
+		if err := c.autoCompleter.Uninstall(c.name); err != nil {
 			return EPerm, err
 		}
 	}
@@ -191,46 +316,44 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	// implementation. If the command is invalid or blank, it is an error.
 	command, ok := c.commands.Get(c.subCommand)
 	if !ok {
-		if c.subCommand == "" {
-			c.ui.Output(c.header)
-		}
-		if hint, ok := c.commands.GetClosestName(c.subCommand); ok {
-			c.ui.Output("Did you mean?\n")
-			c.ui.Info(fmt.Sprintf("    %s\n", hint))
-		}
 		return c.writeHelp(c.subCommandParent(), helpErrCode{
 			Success: EKeyExpired,
 			Failure: EPerm,
 		})
 	}
 
+	// Run the command
+	if err := command.FlagSet().Parse(c.subCommandArgs); err != nil {
+		return EPerm, c.commandHelp(command, err.Error())
+	}
+
 	// If we've been instructed to just print the help, then print help
 	if c.isHelp {
-		return EOK, c.commandHelp(command)
+		return EOK, c.commandHelp(command, "")
 	}
 
 	// If there is an invalid flag, then error
 	if len(c.commandFlags) > 0 {
-		return EPerm, c.commandHelp(command)
+		return EPerm, c.commandHelp(command, "")
 	}
 
-	// Run the command
-	if err := command.FlagSet().Parse(c.subCommandArgs); err != nil {
-		return EPerm, c.commandHelp(command)
-	}
+	// Create a new group context to run.
+	g := task.NewGroup()
 
-	code := command.Run()
-	if code.ShowHelp {
-		if len(c.subCommandArgs) == 1 {
-			if hint, ok := c.commands.GetClosestName(fmt.Sprintf("%s %s", c.subCommand, c.subCommandArgs[0])); ok {
-				c.ui.Output("Did you mean?\n")
-				c.ui.Info(fmt.Sprintf("    %s\n", hint))
-			}
-		}
-		return EPerm, c.commandHelp(command)
-	}
+	// Subscribe all the actions to the group.
+	task.Block(g)
+	command.Run(g)
+	task.Interrupt(g)
 
-	return code.Code, nil
+	// Run the group
+	switch err := g.Run(); err {
+	case commands.ErrShowHelp:
+		return EPerm, c.commandHelp(command, "")
+	case nil:
+		return EOK, nil
+	default:
+		return EPerm, c.commandHelp(command, err.Error())
+	}
 }
 
 // IsVersion returns whether or not the version flag is present within the
@@ -244,47 +367,32 @@ func (c *CLI) IsHelp() bool {
 	return c.isHelp
 }
 
-// IsAutoCompleteInstall returns whether or not the auto complete install flag
-// is present within the arguments.
-func (c *CLI) IsAutoCompleteInstall() bool {
-	return c.isAutoCompleteInstall
-}
-
-// IsAutoCompleteUninstall returns whether or not the auto complete install flag
-// is present within the arguments.
-func (c *CLI) IsAutoCompleteUninstall() bool {
-	return c.isAutoCompleteUninstall
-}
-
 func (c *CLI) processArgs(args []string) error {
-	for i, arg := range args {
+	var processed []string
+	// first remove the default
+	for _, arg := range args {
 		if arg == "--" {
 			break
 		}
 
-		// Check for help flags
-		if arg == "-h" || arg == "-help" || arg == "--help" {
+		switch arg {
+		case "-h", "-help", "--help":
 			c.isHelp = true
-			continue
+		case "-v", "-version", "--version":
+			c.isVersion = true
+		case "--no-color":
+			c.requiresNoColor = true
+		case "--autocomplete-install":
+			c.requiresInstall = true
+		case "--autocomplete-uninstall":
+			c.requiresUninstall = true
+		default:
+			processed = append(processed, arg)
 		}
+	}
 
+	for i, arg := range processed {
 		if c.subCommand == "" {
-			// Check for version flags if not in a subCommand.
-			if arg == "-v" || arg == "-version" || arg == "--version" {
-				c.isVersion = true
-				continue
-			}
-
-			if arg == "-aci" || arg == "-autocomplete-install" || arg == "--autocomplete-install" {
-				c.isAutoCompleteInstall = true
-				continue
-			}
-
-			if arg == "-acu" || arg == "-autocomplete-uninstall" || arg == "--autocomplete-uninstall" {
-				c.isAutoCompleteUninstall = true
-				continue
-			}
-
 			if arg != "" && arg[0] == '-' {
 				// Record the arg...
 				c.commandFlags = append(c.commandFlags, arg)
@@ -308,7 +416,7 @@ func (c *CLI) processArgs(args []string) error {
 				// disallows commands like: ./cli foo "bar baz".
 				// An argument with a space is always an argument.
 				var j int
-				for k, v := range args[i:] {
+				for k, v := range processed[i:] {
 					if strings.ContainsRune(v, ' ') {
 						break
 					}
@@ -317,7 +425,7 @@ func (c *CLI) processArgs(args []string) error {
 
 				// Nested CLI the subCommand is actually the entire arg list up
 				// to a flag that is still a valid subCommand.
-				searchKey := strings.Join(args[i:j], " ")
+				searchKey := strings.Join(processed[i:j], " ")
 				k, ok := c.commands.LongestPrefix(searchKey)
 				if ok {
 					// k could be a prefix that doesn't contain the full command
@@ -335,8 +443,8 @@ func (c *CLI) processArgs(args []string) error {
 				}
 			}
 
-			// The remaining args the subCommand arguments
-			c.subCommandArgs = args[i+1:]
+			// The remaining processed the subCommand arguments
+			c.subCommandArgs = processed[i+1:]
 		}
 	}
 
@@ -380,89 +488,53 @@ func (c *CLI) helpCommands(prefix string) (map[string]Command, error) {
 		if !ok {
 			return nil, fmt.Errorf("not found: %q", k)
 		}
-
-		// If this is a hidden command, don't show it
-		if ok := c.commands.isHidden(k); ok {
-			continue
-		}
-
 		res[k] = cmd
 	}
 
 	return res, nil
 }
 
-func (c *CLI) commandHelp(command Command) error {
-	tmpl, err := newHelpTemplate(c.ui, command)
-	if err != nil {
-		return err
+func (c *CLI) commandHelp(command Command, err string) error {
+	var buf bytes.Buffer
+	writer := tabwriter.NewWriter(&buf, 24, 4, 4, ' ', 0)
+
+	var hint string
+	if close, ok := c.commands.GetClosestName(c.subCommand); ok && close != c.subCommand {
+		hint = close
 	}
 
-	help := command.Help()
-	if flagset := command.FlagSet(); flagset != nil {
+	var flags []string
+	command.FlagSet().VisitAll(func(f *flag.Flag) {
+		flags = append(flags, fmt.Sprintf("--%s	%s (default %q)", f.Name, f.Usage, f.DefValue))
+	})
 
-		buf := new(bytes.Buffer)
-		tab := tabwriter.NewWriter(buf, 2, 2, 4, ' ', 0)
-		flagset.VisitAll(func(flag *flag.Flag) {
-			tab.Write([]byte(fmt.Sprintf("  %s\t%s\t%s\t\n", flag.Name, flag.DefValue, flag.Usage)))
-		})
-		if err := tab.Flush(); err != nil {
-			return errors.WithStack(err)
-		}
-
-		if b := buf.String(); b != "" {
-			help = fmt.Sprintf("%s\nFlags:\n\n%s", help, b)
-		}
+	template := ui.NewTemplate(TemplateHelp,
+		ui.OptionName("help"),
+		ui.OptionColor(!c.requiresNoColor),
+	)
+	if err := template.Write(writer, struct {
+		Err   string
+		Help  string
+		Name  string
+		Hint  string
+		Flags []string
+	}{
+		Err:   err,
+		Help:  command.Help(),
+		Name:  c.subCommand,
+		Hint:  hint,
+		Flags: flags,
+	}); err != nil {
+		return errors.WithStack(err)
 	}
 
-	// Template data
-	data := helpTemplateData{
-		Name: c.name,
-		Help: help,
+	if err := writer.Flush(); err != nil {
+		return errors.WithStack(err)
 	}
 
-	// Build the subCommand list if we have it
-	if c.commands.Nested() {
-		// Get the matching keys
-		subCommands, err := c.helpCommands(c.subCommand)
-		if err != nil {
-			return err
-		}
+	c.ui.Info(strings.TrimSpace(buf.String()) + "\n")
 
-		keys := make([]string, 0, len(subCommands))
-		for k := range subCommands {
-			keys = append(keys, k)
-		}
-
-		// Sort they keys for deterministic output
-		sort.Strings(keys)
-
-		longest := findLongestString(keys)
-
-		// Go through and create their structures
-		for _, k := range keys {
-			// Get the command
-			sub, ok := subCommands[k]
-			if !ok {
-				return fmt.Errorf("error getting subcommand %q", k)
-			}
-
-			// Find the last space and make sure we only include that last part
-			name := k
-			if idx := strings.LastIndex(k, " "); idx >= 0 {
-				name = name[idx+1:]
-			}
-
-			data.SubCommands = append(data.SubCommands, subHelpTemplateData{
-				Name:        name,
-				NameAligned: name + strings.Repeat("", longest-len(k)),
-				Help:        sub.Help(),
-				Synopsis:    sub.Synopsis(),
-			})
-		}
-	}
-
-	return tmpl.Render(data)
+	return nil
 }
 
 // subCommandParent returns the parent of this subCommand, if there is one.
@@ -489,27 +561,43 @@ type helpErrCode struct {
 }
 
 func (c *CLI) writeHelp(command string, errCode helpErrCode) (Errno, error) {
-	cmd, err := c.helpCommands(command)
+	cmds, err := c.helpCommands(command)
 	if err != nil {
 		return errCode.Failure, err
 	}
-	res, err := c.helpFunc(cmd)
+
+	shims := make(map[string]help.Command, len(cmds))
+	for k, v := range cmds {
+		shims[k] = v
+	}
+
+	var hint string
+	if close, ok := c.commands.GetClosestName(c.subCommand); ok {
+		hint = close
+	}
+
+	var header string
+	if c.subCommand == "" {
+		header = c.header
+	}
+
+	res, err := c.helpFunc(help.OptionCommands(shims),
+		help.OptionHeader(header),
+		help.OptionHint(hint),
+		help.OptionColor(!c.requiresNoColor),
+	)
 	if err != nil {
 		return errCode.Failure, err
 	}
-	return c.writeHelpString(res, errCode.Success)
+	c.ui.Info(res)
+	return errCode.Success, nil
 }
 
-func (c *CLI) writeHelpString(s string, code Errno) (Errno, error) {
-	c.ui.Output(s)
-	return code, nil
-}
-
-func findLongestString(s []string) (m int) {
-	for _, k := range s {
-		if v := len(k); v > m {
-			m = v
-		}
-	}
-	return
+func (c *CLI) writeVersion(s string) (Errno, error) {
+	template := ui.NewTemplate(TemplateVersion)
+	return EOK, c.ui.Output(template, struct {
+		Version string
+	}{
+		Version: s,
+	})
 }
