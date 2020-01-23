@@ -13,6 +13,7 @@ func main() {
 
 	cli := clui.New("example", "1.0.0", "EXAMPLE", clui.OptionFileSystem(fsys))
 	cli.Add("version", versionCmdFn)
+	cli.Add("config show", configShowCmdFn)
 
 	code, err := cli.Run(os.Args[1:])
 	if err != nil {

@@ -3,6 +3,8 @@ package commands
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"strings"
 
 	"github.com/spoke-d/clui/flagset"
 	"github.com/spoke-d/task/group"
@@ -25,7 +27,7 @@ type Text struct {
 func NewText(help, synopsis string) *Text {
 	return &Text{
 		helpText:     help,
-		synopsisText: synopsis,
+		synopsisText: strings.TrimSpace(synopsis),
 		flagSet:      flagset.New("text-command", flag.ExitOnError),
 	}
 }
@@ -40,7 +42,11 @@ func (c *Text) FlagSet() *flagset.FlagSet {
 // usage. A brief few sentences explaining the function of the command, and
 // the complete list of flags the command accepts.
 func (c *Text) Help() string {
-	return c.helpText
+	return fmt.Sprintf(`
+%q is a placeholder command.
+
+You can see the other sub commands available below.
+`, c.helpText)
 }
 
 // Synopsis should return a one-line, short synopsis of the command.

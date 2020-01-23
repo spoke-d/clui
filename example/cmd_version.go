@@ -52,7 +52,8 @@ func (v *versionCmd) Synopsis() string {
 }
 
 func (v *versionCmd) Run(g *group.Group) {
-	v.ui.Output(ui.NewTemplate(versionTemplate, ui.OptionFormat(v.template)), struct {
+	template := ui.NewTemplate(versionTemplate, ui.OptionFormat(v.template))
+	v.ui.Output(template, struct {
 		Version string
 	}{
 		Version: "1.0.0",

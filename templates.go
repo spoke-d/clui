@@ -15,7 +15,7 @@ const TemplateComplete = `
 
 // TemplatePlaceHolder describes a template for rendering placeholder text.
 const TemplatePlaceHolder = `
-This command is accessed by using one of the subcommands below.
+Selection of commands that are nested under this one.
 `
 
 // TemplateHelp represents a template for rendering the help for commands and
