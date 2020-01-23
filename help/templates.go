@@ -12,13 +12,19 @@ const HelpTemplate = `
 Did you mean?
         {{green .Hint}}
 {{end}}
-Usage: {{green .Name}} [--version] [--help] <command> [<args>]
+Usage: {{green .Name}} [--version] [--help] [--debug] <command> [<args>]
 
 {{- if gt (len .Commands) 0 }}
 
-Available commands are:
+Available commands:
 {{ range .Commands }}
 %s
 {{- end}}
 {{- end}}
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `

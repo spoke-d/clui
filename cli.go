@@ -226,7 +226,7 @@ type CLI struct {
 	subCommandArgs []string
 
 	// These are special global flags
-	isHelp, isVersion                  bool
+	isHelp, isVersion, isDebug         bool
 	requiresInstall, requiresUninstall bool
 	requiresNoColor                    bool
 }
@@ -380,6 +380,8 @@ func (c *CLI) processArgs(args []string) error {
 			c.isHelp = true
 		case "-v", "-version", "--version":
 			c.isVersion = true
+		case "--debug":
+			c.isDebug = true
 		case "--no-color":
 			c.requiresNoColor = true
 		case "--autocomplete-install":

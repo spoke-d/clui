@@ -46,4 +46,9 @@ Usage:
 Description:
     {{ indent .Help }}
 
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `
