@@ -3,8 +3,8 @@ package help
 // HelpTemplateFormat defines a basic format for templating a help template.
 const HelpTemplateFormat = `    {{green .Name}}	{{.Synopsis}}`
 
-// HelpTemplate is the current view template of the help output.
-const HelpTemplate = `
+// BasicHelpTemplate is the current view template of the help output.
+const BasicHelpTemplate = `
 {{- if .Header }}
 {{.Header}}
 {{end}}
@@ -19,6 +19,49 @@ Usage: {{green .Name}} [--version] [--help] [--debug] <command> [<args>]
 Available commands:
 {{ range .Commands }}
 %s
+{{- end}}
+{{- end}}
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
+`
+
+// CommandHelpTemplate represents a template for rendering the help for commands
+// and subcommands.
+const CommandHelpTemplate = `
+{{- if .Err }}
+Found some issues:
+
+    {{printf "%s\n" .Err | red}}
+{{- end}}
+{{- if .Hint }}
+Did you mean?
+    {{printf "%s\n" .Hint | green}}
+
+{{- end}}
+{{- if .Name}}
+Usage:
+
+    {{green .Name}}{{- if .Flags}} [flags]{{- end}}
+
+{{- if gt (len .Flags) 0 }}
+{{range $flag := .Flags }}
+    {{green $.Name}}  {{$flag}}
+{{- end}}
+{{- end}}
+{{- end}}
+
+Description:
+    {{ indent .Help }}
+
+{{- if gt (len .Commands) 0 }}
+
+Available commands:
+{{ range .Commands }}
+    {{green .Name}}	{{.Synopsis}}
 {{- end}}
 {{- end}}
 

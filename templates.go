@@ -18,37 +18,7 @@ const TemplatePlaceHolder = `
 Selection of commands that are nested under this one.
 `
 
-// TemplateHelp represents a template for rendering the help for commands and
-// subcommands.
-const TemplateHelp = `
-{{- if .Err }}
-Found some issues:
-
-    {{printf "%s\n" .Err | red}}
-{{- end}}
-{{- if .Hint }}
-Did you mean?
-    {{printf "%s\n" .Hint | green}}
-
-{{- end}}
-{{- if .Name}}
-Usage:
-
-    {{green .Name}}{{- if .Flags}} [flags]{{- end}}
-
-{{- if gt (len .Flags) 0 }}
-{{range $flag := .Flags }}
-    {{green $.Name}}  {{$flag}}
-{{- end}}
-{{- end}}
-{{- end}}
-
-Description:
-    {{ indent .Help }}
-
-Global Flags:
-
-        --debug        Show all debug messages
-    -h, --help         Print command help
-        --version      Print client version
+// TemplateFlags describes a template for rendering flags in help.
+const TemplateFlags = `
+{{.Name}}	{{.Usage}} (defaults: "{{.Defaults}}")
 `

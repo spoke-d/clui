@@ -1,13 +1,10 @@
 package clui
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/pkg/errors"
 	"github.com/spoke-d/clui/autocomplete"
@@ -17,7 +14,6 @@ import (
 	"github.com/spoke-d/clui/flagset"
 	"github.com/spoke-d/clui/group"
 	"github.com/spoke-d/clui/help"
-	"github.com/spoke-d/clui/radix"
 	"github.com/spoke-d/clui/ui"
 	task "github.com/spoke-d/task/group"
 )
@@ -222,13 +218,7 @@ type CLI struct {
 	commands     *group.Group
 	commandFlags []string
 
-	subCommand     string
-	subCommandArgs []string
-
-	// These are special global flags
-	isHelp, isVersion, isDebug         bool
-	requiresInstall, requiresUninstall bool
-	requiresNoColor                    bool
+	args *GlobalArgs
 }
 
 // New returns a new CLI instance with sensible default.
@@ -250,6 +240,7 @@ func New(name, version, header string, options ...CLIOption) *CLI {
 		helpFunc:      opt.HelpFunc(name),
 		commands:      store,
 		autoCompleter: opt.AutoCompleter(store, opt.fileSystem),
+		args:          NewGlobalArgs(store),
 	}
 }
 
@@ -264,12 +255,8 @@ func (c *CLI) Run(args []string) (Errno, error) {
 		return EPerm, err
 	}
 
-	if err := c.processArgs(args); err != nil {
+	if err := c.args.Process(args); err != nil {
 		return EPerm, err
-	}
-
-	if c.requiresInstall && c.requiresUninstall {
-		return EPerm, fmt.Errorf("both autocomplete flags can not be used at the same time")
 	}
 
 	// If this is a autocompletion request, satisfy it. This must be called
@@ -283,16 +270,13 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Just show the version and exit if instructed.
-	if c.isVersion && c.version != "" {
+	if c.args.Version() && c.version != "" {
 		return c.writeVersion(c.version)
 	}
 
 	// Just print the help when only '-h' or '--help' is passed
-	if sc := c.subCommand; c.isHelp && sc == "" {
-		return c.writeHelp(sc, helpErrCode{
-			Success: 0,
-			Failure: EPerm,
-		})
+	if sc := c.args.SubCommand(); c.args.Help() && sc == "" {
+		return c.writeHelp(sc)
 	}
 
 	// Autocomplete requires the "Name" to be set so that we know what command
@@ -301,12 +285,12 @@ func (c *CLI) Run(args []string) (Errno, error) {
 		return EPerm, fmt.Errorf("name not set %q", c.name)
 	}
 
-	if c.requiresInstall {
+	if c.args.RequiresInstall() {
 		if err := c.autoCompleter.Install(c.name); err != nil {
 			return EPerm, err
 		}
 	}
-	if c.requiresUninstall {
+	if c.args.RequiresUninstall() {
 		if err := c.autoCompleter.Uninstall(c.name); err != nil {
 			return EPerm, err
 		}
@@ -314,27 +298,24 @@ func (c *CLI) Run(args []string) (Errno, error) {
 
 	// Attempt to get the factory function for creating the command
 	// implementation. If the command is invalid or blank, it is an error.
-	command, ok := c.commands.Get(c.subCommand)
+	command, ok := c.commands.Get(c.args.SubCommand())
 	if !ok {
-		return c.writeHelp(c.subCommandParent(), helpErrCode{
-			Success: EKeyExpired,
-			Failure: EPerm,
-		})
+		return c.writeHelp(c.subCommandParent())
 	}
 
 	// Run the command
-	if err := command.FlagSet().Parse(c.subCommandArgs); err != nil {
-		return EPerm, c.commandHelp(command, err.Error())
+	if err := command.FlagSet().Parse(c.args.SubCommandArgs()); err != nil {
+		return c.commandHelp(command, err.Error())
 	}
 
 	// If we've been instructed to just print the help, then print help
-	if c.isHelp {
-		return EOK, c.commandHelp(command, "")
+	if c.args.Help() {
+		return c.commandHelp(command, "")
 	}
 
 	// If there is an invalid flag, then error
 	if len(c.commandFlags) > 0 {
-		return EPerm, c.commandHelp(command, "")
+		return c.commandHelp(command, "")
 	}
 
 	// Create a new group context to run.
@@ -348,202 +329,19 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	// Run the group
 	switch err := g.Run(); err {
 	case commands.ErrShowHelp:
-		return EPerm, c.commandHelp(command, "")
+		return c.commandHelp(command, "")
 	case nil:
 		return EOK, nil
 	default:
-		return EPerm, c.commandHelp(command, err.Error())
+		return c.commandHelp(command, err.Error())
 	}
-}
-
-// IsVersion returns whether or not the version flag is present within the
-// arguments.
-func (c *CLI) IsVersion() bool {
-	return c.isVersion
-}
-
-// IsHelp returns whether or not the help flag is present within the arguments.
-func (c *CLI) IsHelp() bool {
-	return c.isHelp
-}
-
-func (c *CLI) processArgs(args []string) error {
-	var processed []string
-	// first remove the default
-	for _, arg := range args {
-		if arg == "--" {
-			break
-		}
-
-		switch arg {
-		case "-h", "-help", "--help":
-			c.isHelp = true
-		case "-v", "-version", "--version":
-			c.isVersion = true
-		case "--debug":
-			c.isDebug = true
-		case "--no-color":
-			c.requiresNoColor = true
-		case "--autocomplete-install":
-			c.requiresInstall = true
-		case "--autocomplete-uninstall":
-			c.requiresUninstall = true
-		default:
-			processed = append(processed, arg)
-		}
-	}
-
-	for i, arg := range processed {
-		if c.subCommand == "" {
-			if arg != "" && arg[0] == '-' {
-				// Record the arg...
-				c.commandFlags = append(c.commandFlags, arg)
-			}
-		}
-
-		// If we didn't find a subCommand yet and this is the first non-flag
-		// argument, then this is our subCommand.
-		if c.subCommand == "" && arg != "" && arg[0] != '-' {
-			c.subCommand = arg
-			if c.commands.Nested() {
-				// If the command has a space in it, then it is invalid.
-				// Set a blank command so that it fails.
-				if strings.ContainsRune(arg, ' ') {
-					c.subCommand = ""
-					return nil
-				}
-
-				// Determine the argument we look to end subCommands.
-				// We look at all arguments until one has a space. This
-				// disallows commands like: ./cli foo "bar baz".
-				// An argument with a space is always an argument.
-				var j int
-				for k, v := range processed[i:] {
-					if strings.ContainsRune(v, ' ') {
-						break
-					}
-					j = i + k + 1
-				}
-
-				// Nested CLI the subCommand is actually the entire arg list up
-				// to a flag that is still a valid subCommand.
-				searchKey := strings.Join(processed[i:j], " ")
-				k, ok := c.commands.LongestPrefix(searchKey)
-				if ok {
-					// k could be a prefix that doesn't contain the full command
-					// such as "foo", instead of "foobar", so we need to verify
-					// that we have an entire key. To do that, we look for an
-					// ending in a space of end of a string.
-					verify, err := regexp.Compile(regexp.QuoteMeta(k) + `( |$)`)
-					if err != nil {
-						return err
-					}
-					if verify.MatchString(searchKey) {
-						c.subCommand = k
-						i += strings.Count(k, " ")
-					}
-				}
-			}
-
-			// The remaining processed the subCommand arguments
-			c.subCommandArgs = processed[i+1:]
-		}
-	}
-
-	// If we never found a subCommand and support a default command, then
-	// switch to using that
-	if c.subCommand == "" {
-		if _, ok := c.commands.Get(""); ok {
-			x := c.commandFlags
-			x = append(x, c.subCommandArgs...)
-			c.commandFlags = nil
-			c.subCommandArgs = x
-		}
-	}
-
-	return nil
-}
-
-// helpCommands returns the subCommands for the HelpFunc argument.
-// This will only contain immediate subCommands.
-func (c *CLI) helpCommands(prefix string) (map[string]Command, error) {
-	// if our prefix isn't empty, make sure it ends in ' '
-	if prefix != "" && prefix[len(prefix)-1] != ' ' {
-		prefix += " "
-	}
-
-	// Get all the subkeys of this command
-	var keys []string
-	c.commands.WalkPrefix(prefix, func(k string, v radix.Value) bool {
-		// Ignore any sub-sub keys, i.e. "foo bar baz" when we want "foo bar"
-		if !strings.Contains(k[len(prefix):], " ") {
-			keys = append(keys, k)
-		}
-
-		return false
-	})
-
-	// For each of the keys return that in the map
-	res := make(map[string]Command, len(keys))
-	for _, k := range keys {
-		cmd, ok := c.commands.Get(k)
-		if !ok {
-			return nil, fmt.Errorf("not found: %q", k)
-		}
-		res[k] = cmd
-	}
-
-	return res, nil
-}
-
-func (c *CLI) commandHelp(command Command, err string) error {
-	var buf bytes.Buffer
-	writer := tabwriter.NewWriter(&buf, 24, 4, 4, ' ', 0)
-
-	var hint string
-	if close, ok := c.commands.GetClosestName(c.subCommand); ok && close != c.subCommand {
-		hint = close
-	}
-
-	var flags []string
-	command.FlagSet().VisitAll(func(f *flag.Flag) {
-		flags = append(flags, fmt.Sprintf("--%s	%s (default %q)", f.Name, f.Usage, f.DefValue))
-	})
-
-	template := ui.NewTemplate(TemplateHelp,
-		ui.OptionName("help"),
-		ui.OptionColor(!c.requiresNoColor),
-	)
-	if err := template.Write(writer, struct {
-		Err   string
-		Help  string
-		Name  string
-		Hint  string
-		Flags []string
-	}{
-		Err:   err,
-		Help:  command.Help(),
-		Name:  c.subCommand,
-		Hint:  hint,
-		Flags: flags,
-	}); err != nil {
-		return errors.WithStack(err)
-	}
-
-	if err := writer.Flush(); err != nil {
-		return errors.WithStack(err)
-	}
-
-	c.ui.Info(strings.TrimSpace(buf.String()) + "\n")
-
-	return nil
 }
 
 // subCommandParent returns the parent of this subCommand, if there is one.
 // Returns empty string ("") if this isn't a parent.
 func (c *CLI) subCommandParent() string {
 	// get the subCommand, if it is "", just return
-	sub := c.subCommand
+	sub := c.args.SubCommand()
 	if sub == "" {
 		return sub
 	}
@@ -558,41 +356,85 @@ func (c *CLI) subCommandParent() string {
 	return sub[:idx]
 }
 
-type helpErrCode struct {
-	Success, Failure Errno
-}
-
-func (c *CLI) writeHelp(command string, errCode helpErrCode) (Errno, error) {
-	cmds, err := c.helpCommands(command)
+func (c *CLI) writeHelp(command string) (Errno, error) {
+	children, err := FindChildren(c.commands, command)
 	if err != nil {
-		return errCode.Failure, err
+		return EPerm, errors.WithStack(err)
 	}
 
-	shims := make(map[string]help.Command, len(cmds))
-	for k, v := range cmds {
+	shims := make(map[string]help.Command, len(children))
+	for k, v := range children {
 		shims[k] = v
 	}
 
+	subCommand := c.args.SubCommand()
+
 	var hint string
-	if close, ok := c.commands.GetClosestName(c.subCommand); ok {
+	if close, ok := c.commands.GetClosestName(subCommand); ok {
 		hint = close
 	}
 
 	var header string
-	if c.subCommand == "" {
+	if subCommand == "" {
 		header = c.header
 	}
 
-	res, err := c.helpFunc(help.OptionCommands(shims),
+	res, err := c.helpFunc(
+		help.OptionCommands(shims),
 		help.OptionHeader(header),
 		help.OptionHint(hint),
-		help.OptionColor(!c.requiresNoColor),
+		help.OptionColor(!c.args.RequiresNoColor()),
+		help.OptionTemplate(help.BasicHelpTemplate),
 	)
 	if err != nil {
-		return errCode.Failure, err
+		return EPerm, errors.WithStack(err)
 	}
 	c.ui.Info(res)
-	return errCode.Success, nil
+	return EOK, nil
+}
+
+func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
+	subCommand := c.args.SubCommand()
+
+	children, err := FindChildren(c.commands, subCommand)
+	if err != nil {
+		return EPerm, errors.WithStack(err)
+	}
+
+	shims := make(map[string]help.Command, len(children))
+	for k, v := range children {
+		shims[k] = v
+	}
+
+	var hint string
+	if close, ok := c.commands.GetClosestName(subCommand); ok && close != subCommand {
+		hint = close
+	}
+
+	var header string
+	if subCommand == "" {
+		header = c.header
+	}
+
+	flags, err := commandFlags(command.FlagSet())
+	if err != nil {
+		return EPerm, errors.WithStack(err)
+	}
+
+	res, err := c.helpFunc(
+		help.OptionCommands(shims),
+		help.OptionHeader(header),
+		help.OptionHint(hint),
+		help.OptionColor(!c.args.RequiresNoColor()),
+		help.OptionTemplate(help.CommandHelpTemplate),
+		help.OptionHelp(command.Help()),
+		help.OptionFlags(flags),
+	)
+	if err != nil {
+		return EPerm, errors.WithStack(err)
+	}
+	c.ui.Info(res)
+	return EOK, nil
 }
 
 func (c *CLI) writeVersion(s string) (Errno, error) {
@@ -602,4 +444,33 @@ func (c *CLI) writeVersion(s string) (Errno, error) {
 	}{
 		Version: s,
 	})
+}
+
+func commandFlags(flags *flagset.FlagSet) ([]string, error) {
+	type flagType struct {
+		Name     string
+		Usage    string
+		Defaults string
+	}
+
+	template := ui.NewTemplate(TemplateFlags, ui.OptionName("flags"))
+	var allFlags []*flag.Flag
+	flags.VisitAll(func(f *flag.Flag) {
+		allFlags = append(allFlags, f)
+	})
+
+	data := make([]string, len(allFlags))
+	for k, v := range allFlags {
+		res, err := template.Render(flagType{
+			Name:     v.Name,
+			Usage:    v.Usage,
+			Defaults: v.DefValue,
+		})
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		data[k] = strings.TrimSpace(res)
+	}
+
+	return data, nil
 }

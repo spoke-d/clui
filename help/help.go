@@ -22,9 +22,13 @@ type Command interface {
 type HelpOptions interface {
 	SetHeader(string)
 	SetHint(string)
+	SetHelp(string)
+	SetErr(string)
 	SetCommands(map[string]Command)
+	SetFlags([]string)
 	SetFormat(string)
 	SetColor(bool)
+	SetTemplate(string)
 }
 
 // HelpOption captures a tweak that can be applied to the Help.
@@ -34,9 +38,13 @@ type HelpOption func(HelpOptions)
 type help struct {
 	header   string
 	hint     string
+	help     string
+	err      string
 	commands map[string]Command
+	flags    []string
 	format   string
 	color    bool
+	template string
 }
 
 func (s *help) SetHeader(p string) {
@@ -47,8 +55,20 @@ func (s *help) SetHint(p string) {
 	s.hint = p
 }
 
+func (s *help) SetHelp(p string) {
+	s.help = p
+}
+
+func (s *help) SetErr(p string) {
+	s.err = p
+}
+
 func (s *help) SetCommands(p map[string]Command) {
 	s.commands = p
+}
+
+func (s *help) SetFlags(p []string) {
+	s.flags = p
 }
 
 func (s *help) SetFormat(p string) {
@@ -59,11 +79,23 @@ func (s *help) SetColor(p bool) {
 	s.color = p
 }
 
+func (s *help) SetTemplate(p string) {
+	s.template = p
+}
+
 // OptionHeader allows the setting a header option to configure
 // the group.
 func OptionHeader(i string) HelpOption {
 	return func(opt HelpOptions) {
 		opt.SetHeader(i)
+	}
+}
+
+// OptionHelp allows the setting a hint option to configure
+// the group.
+func OptionHelp(i string) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetHelp(i)
 	}
 }
 
@@ -75,11 +107,27 @@ func OptionHint(i string) HelpOption {
 	}
 }
 
+// OptionErr allows the setting a hint option to configure
+// the group.
+func OptionErr(i string) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetErr(i)
+	}
+}
+
 // OptionCommands allows the setting a commands option to configure
 // the group.
 func OptionCommands(i map[string]Command) HelpOption {
 	return func(opt HelpOptions) {
 		opt.SetCommands(i)
+	}
+}
+
+// OptionFlags allows the setting a commands option to configure
+// the group.
+func OptionFlags(i []string) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetFlags(i)
 	}
 }
 
@@ -96,6 +144,14 @@ func OptionFormat(i string) HelpOption {
 func OptionColor(i bool) HelpOption {
 	return func(opt HelpOptions) {
 		opt.SetColor(i)
+	}
+}
+
+// OptionTemplate allows the setting a template option to configure
+// the group.
+func OptionTemplate(i string) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetTemplate(i)
 	}
 }
 
@@ -139,22 +195,28 @@ func BasicFunc(name string) Func {
 		if strings.TrimSpace(format) == "" {
 			format = HelpTemplateFormat
 		}
-		formatted := fmt.Sprintf(HelpTemplate, format)
+		formatted := fmt.Sprintf(opt.template, format)
 
 		t := ui.NewTemplate(formatted,
-			ui.OptionName("basic-help"),
+			ui.OptionName("basic-help:"+name),
 			ui.OptionColor(opt.color),
 		)
 		if err := t.Write(writer, struct {
 			Name     string
 			Header   string
 			Hint     string
+			Help     string
+			Err      string
 			Commands []nameHelp
+			Flags    []string
 		}{
 			Name:     name,
 			Header:   opt.header,
 			Hint:     opt.hint,
+			Help:     opt.help,
+			Err:      opt.err,
 			Commands: serialized,
+			Flags:    opt.flags,
 		}); err != nil {
 			return "", errors.WithStack(err)
 		}
