@@ -18,7 +18,13 @@ func TestBasicFunc(t *testing.T) {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
 		required := `
-Usage: foo [--version] [--help] <command> [<args>]
+Usage: foo [--version] [--help] [--debug] <command> [<args>]
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `[1:]
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
@@ -45,12 +51,18 @@ Usage: foo [--version] [--help] <command> [<args>]
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
 		required := strings.TrimSpace(`
-Usage: foo [--version] [--help] <command> [<args>]
+Usage: foo [--version] [--help] [--debug] <command> [<args>]
 
-Available commands are:
+Available commands:
 
-foo bar baz xxx         foo command
-version                 returns the version
+    foo bar baz xxx     foo command
+    version             returns the version
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `) + "\n"
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
@@ -77,12 +89,18 @@ version                 returns the version
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
 		required := strings.TrimSpace(`
-Usage: foo [--version] [--help] <command> [<args>]
+Usage: foo [--version] [--help] [--debug] <command> [<args>]
 
-Available commands are:
+Available commands:
 
 foo bar baz xxx
 version
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `) + "\n"
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
@@ -111,12 +129,18 @@ version
 		required := strings.TrimSpace(`
 **HEADER**
 
-Usage: foo [--version] [--help] <command> [<args>]
+Usage: foo [--version] [--help] [--debug] <command> [<args>]
 
-Available commands are:
+Available commands:
 
-foo bar baz xxx         foo command
-version                 returns the version
+    foo bar baz xxx     foo command
+    version             returns the version
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `) + "\n"
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
@@ -148,12 +172,18 @@ version                 returns the version
 Did you mean?
         foo
 
-Usage: foo [--version] [--help] <command> [<args>]
+Usage: foo [--version] [--help] [--debug] <command> [<args>]
 
-Available commands are:
+Available commands:
 
-foo bar baz xxx         foo command
-version                 returns the version
+    foo bar baz xxx     foo command
+    version             returns the version
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
 `) + "\n"
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)

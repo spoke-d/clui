@@ -1,9 +1,11 @@
 package commands
 
 import (
-	"github.com/spoke-d/task/group"
+	"strings"
 	"testing"
 	"testing/quick"
+
+	"github.com/spoke-d/task/group"
 )
 
 func TestTextCommand(t *testing.T) {
@@ -13,7 +15,7 @@ func TestTextCommand(t *testing.T) {
 		f := func(a, b string) bool {
 			text := NewText(a, b)
 
-			return text.Help() == a && text.Synopsis() == b
+			return text.Synopsis() == strings.TrimSpace(b)
 		}
 		if err := quick.Check(f, nil); err != nil {
 			t.Error(err)

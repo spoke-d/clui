@@ -195,7 +195,11 @@ func BasicFunc(name string) Func {
 		if strings.TrimSpace(format) == "" {
 			format = HelpTemplateFormat
 		}
-		formatted := fmt.Sprintf(opt.template, format)
+		template := opt.template
+		if strings.TrimSpace(template) == "" {
+			template = BasicHelpTemplate
+		}
+		formatted := fmt.Sprintf(template, format)
 
 		t := ui.NewTemplate(formatted,
 			ui.OptionName("basic-help:"+name),
