@@ -462,7 +462,7 @@ func commandFlags(flags *flagset.FlagSet) ([]string, error) {
 	data := make([]string, len(allFlags))
 	for k, v := range allFlags {
 		res, err := template.Render(flagType{
-			Name:     v.Name,
+			Name:     fmt.Sprintf("--%s", v.Name),
 			Usage:    v.Usage,
 			Defaults: v.DefValue,
 		})
