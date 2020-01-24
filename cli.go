@@ -429,6 +429,7 @@ func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 		help.OptionTemplate(help.CommandHelpTemplate),
 		help.OptionHelp(command.Help()),
 		help.OptionFlags(flags),
+		help.OptionErr(operatorErr),
 	)
 	if err != nil {
 		return EPerm, errors.WithStack(err)
