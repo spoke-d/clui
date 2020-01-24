@@ -15,7 +15,7 @@ func TestReadingFromEnv(t *testing.T) {
 	fn := func(envValue, defaultValue, cmdValue ASCII) bool {
 		os.Setenv("TEST", envValue.String())
 
-		flagset := NewFlagSet("test", flag.ExitOnError)
+		flagset := New("test", flag.ExitOnError)
 
 		test := flagset.String("test", defaultValue.String(), "test value")
 
@@ -51,7 +51,7 @@ func TestReadingFromEnvFile(t *testing.T) {
 
 		os.Setenv("ENV_FILE", tmpfile.Name())
 
-		flagset := NewFlagSet("test", flag.ExitOnError)
+		flagset := New("test", flag.ExitOnError)
 		test := flagset.String("test", defaultValue.String(), "test value")
 
 		args := []string{fmt.Sprintf("-test=%s", cmdValue.String())}

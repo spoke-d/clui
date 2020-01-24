@@ -1,12 +1,10 @@
-package radix_test
+package radix
 
 import (
 	"reflect"
 	"sort"
 	"testing"
 	"testing/quick"
-
-	"github.com/spoke-d/clui/radix"
 )
 
 func TestRadix(t *testing.T) {
@@ -14,7 +12,7 @@ func TestRadix(t *testing.T) {
 
 	t.Run("empty", func(t *testing.T) {
 		fn := func(k string) bool {
-			tree := radix.New()
+			tree := New()
 			_, ok := tree.Get(k)
 			return !ok
 		}
@@ -25,7 +23,7 @@ func TestRadix(t *testing.T) {
 
 	t.Run("insertion", func(t *testing.T) {
 		fn := func(k, v string) bool {
-			tree := radix.New()
+			tree := New()
 			got, ok, err := tree.Insert(k, v)
 			if err != nil {
 				t.Fatal(err)
@@ -57,7 +55,7 @@ func TestRadix(t *testing.T) {
 			// make sure they're all unique
 			pairs = uniquePairs(t, pairs)
 
-			tree := radix.New()
+			tree := New()
 
 			for _, p := range pairs {
 				got, ok, err := tree.Insert(p.K, p.V)
@@ -93,7 +91,7 @@ func TestRadix(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		fn := func(k, v string) bool {
-			tree := radix.New()
+			tree := New()
 			got, ok, err := tree.Insert(k, v)
 			if err != nil {
 				t.Fatal(err)
@@ -125,7 +123,7 @@ func TestRadix(t *testing.T) {
 			// make sure they're all unique
 			pairs = uniquePairs(t, pairs)
 
-			tree := radix.New()
+			tree := New()
 
 			for _, p := range pairs {
 				got, ok, err := tree.Insert(p.K, p.V)
@@ -164,7 +162,7 @@ func TestRadix(t *testing.T) {
 			// make sure they're all unique
 			pairs = uniquePairs(t, pairs)
 
-			tree := radix.New()
+			tree := New()
 
 			for _, p := range pairs {
 				got, ok, err := tree.Insert(p.K, p.V)
@@ -180,7 +178,7 @@ func TestRadix(t *testing.T) {
 			}
 
 			var w []walked
-			tree.Walk(func(k string, v radix.Value) bool {
+			tree.Walk(func(k string, v Value) bool {
 				w = append(w, walked{k, v})
 				return false
 			})
@@ -196,7 +194,7 @@ func TestRadixRoot(t *testing.T) {
 	t.Parallel()
 
 	t.Run("insert", func(t *testing.T) {
-		tree := radix.New()
+		tree := New()
 		_, ok, err := tree.Insert("", "")
 		if err != nil {
 			t.Fatal(err)
@@ -207,7 +205,7 @@ func TestRadixRoot(t *testing.T) {
 	})
 
 	t.Run("delete", func(t *testing.T) {
-		tree := radix.New()
+		tree := New()
 		_, ok := tree.Delete("")
 		if expected, actual := false, ok; expected != actual {
 			t.Errorf("expected: %t, actual: %t", expected, actual)
@@ -215,7 +213,7 @@ func TestRadixRoot(t *testing.T) {
 	})
 
 	t.Run("get", func(t *testing.T) {
-		tree := radix.New()
+		tree := New()
 		_, ok := tree.Get("")
 		if expected, actual := false, ok; expected != actual {
 			t.Errorf("expected: %t, actual: %t", expected, actual)
@@ -224,7 +222,7 @@ func TestRadixRoot(t *testing.T) {
 }
 
 func TestRadixLongestPrefix(t *testing.T) {
-	tree := radix.New()
+	tree := New()
 
 	for _, k := range []string{
 		"",
@@ -270,7 +268,7 @@ func TestRadixLongestPrefix(t *testing.T) {
 func TestRadixWalkPrefix(t *testing.T) {
 	t.Parallel()
 
-	tree := radix.New()
+	tree := New()
 
 	for _, k := range []string{
 		"foobar",
@@ -329,7 +327,7 @@ func TestRadixWalkPrefix(t *testing.T) {
 	} {
 		t.Run(tc.input, func(t *testing.T) {
 			got := make([]string, 0)
-			tree.WalkPrefix(tc.input, func(s string, v radix.Value) bool {
+			tree.WalkPrefix(tc.input, func(s string, v Value) bool {
 				got = append(got, s)
 				return false
 			})
@@ -350,7 +348,7 @@ type pair struct {
 
 type walked struct {
 	K string
-	V radix.Value
+	V Value
 }
 
 func uniquePairs(t *testing.T, p []pair) []pair {
