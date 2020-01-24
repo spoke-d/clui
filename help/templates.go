@@ -35,13 +35,13 @@ const CommandHelpTemplate = `
 {{- if .Err }}
 Found some issues:
 
-    {{printf "%s\n" .Err | red}}
-{{- end}}
+    {{red .Err}}
+{{end -}}
 {{- if .Hint }}
 Did you mean?
     {{printf "%s\n" .Hint | green}}
 
-{{- end}}
+{{end -}}
 {{- if .Name}}
 Usage:
 

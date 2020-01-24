@@ -190,3 +190,37 @@ Global Flags:
 		}
 	})
 }
+
+func TestComandFunc(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no commands", func(t *testing.T) {
+		helpFn := BasicFunc("foo")
+		result, err := helpFn(OptionErr("something went wrong"), OptionTemplate(CommandHelpTemplate))
+
+		if expected, actual := true, err == nil; expected != actual {
+			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
+		}
+		required := `
+Found some issues:
+
+    something went wrong
+
+Usage:
+
+    foo
+
+Description:
+    
+
+Global Flags:
+
+        --debug        Show all debug messages
+    -h, --help         Print command help
+        --version      Print client version
+`[1:]
+		if expected, actual := required, result; expected != actual {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+	})
+}
