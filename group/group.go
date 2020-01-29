@@ -31,6 +31,11 @@ type Command interface {
 	// This should be short (50 characters of less ideally).
 	Synopsis() string
 
+	// Init is called with all the args required to run a command.
+	// This is separated from Run, to allow the preperation of a command, before
+	// it's run.
+	Init([]string, bool) error
+
 	// Run should run the actual command with the given CLI instance and
 	// command-line arguments. It should return the exit status when it is
 	// finished.

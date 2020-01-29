@@ -51,6 +51,10 @@ func (v *versionCmd) Synopsis() string {
 	return "Show client and server version."
 }
 
+func (v *versionCmd) Init([]string, bool) error {
+	return nil
+}
+
 func (v *versionCmd) Run(g *group.Group) {
 	template := ui.NewTemplate(versionTemplate, ui.OptionFormat(v.template))
 	v.ui.Output(template, struct {

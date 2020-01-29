@@ -62,6 +62,20 @@ func (mr *MockCommandMockRecorder) Help() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Help", reflect.TypeOf((*MockCommand)(nil).Help))
 }
 
+// Init mocks base method
+func (m *MockCommand) Init(arg0 []string, arg1 bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Init", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Init indicates an expected call of Init
+func (mr *MockCommandMockRecorder) Init(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockCommand)(nil).Init), arg0, arg1)
+}
+
 // Run mocks base method
 func (m *MockCommand) Run(arg0 *group.Group) {
 	m.ctrl.T.Helper()

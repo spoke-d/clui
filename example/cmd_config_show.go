@@ -46,6 +46,10 @@ func (v *configShowCmd) Synopsis() string {
 	return "Show configuration."
 }
 
+func (v *configShowCmd) Init(args []string, debug bool) error {
+	return nil
+}
+
 type config struct {
 	Key   string
 	Value interface{}

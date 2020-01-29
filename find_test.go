@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-
 	"github.com/spoke-d/clui/group"
 )
 

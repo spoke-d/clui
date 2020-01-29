@@ -58,6 +58,11 @@ type Command interface {
 	// This should be short (50 characters of less ideally).
 	Synopsis() string
 
+	// Init is called with all the args required to run a command.
+	// This is separated from Run, to allow the preperation of a command, before
+	// it's run.
+	Init([]string, bool) error
+
 	// Run should run the actual command with the given CLI instance and
 	// command-line arguments. It should return the exit status when it is
 	// finished.
@@ -316,6 +321,17 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	// If there is an invalid flag, then error
 	if len(c.commandFlags) > 0 {
 		return c.commandHelp(command, "")
+	}
+
+	// Remove the flags, those are handled by the flagset.
+	var subCmdArgs []string
+	for _, v := range c.args.SubCommandArgs() {
+		if !strings.HasPrefix(v, "-") {
+			subCmdArgs = append(subCmdArgs, v)
+		}
+	}
+	if err := command.Init(subCmdArgs, c.args.Debug()); err != nil {
+		return c.commandHelp(command, err.Error())
 	}
 
 	// Create a new group context to run.
