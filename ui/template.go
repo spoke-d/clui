@@ -16,15 +16,17 @@ type TemplateOptions interface {
 	SetName(string)
 	SetFormat(string)
 	SetColor(bool)
+	SetFunctions(map[string]interface{})
 }
 
 // TemplateOption captures a tweak that can be applied to the Template.
 type TemplateOption func(TemplateOptions)
 
 type template struct {
-	name   string
-	format string
-	color  bool
+	name      string
+	format    string
+	color     bool
+	functions map[string]interface{}
 }
 
 func (s *template) SetName(p string) {
@@ -37,6 +39,10 @@ func (s *template) SetFormat(p string) {
 
 func (s *template) SetColor(p bool) {
 	s.color = p
+}
+
+func (s *template) SetFunctions(p map[string]interface{}) {
+	s.functions = p
 }
 
 func (s *template) Name() string {
@@ -67,6 +73,14 @@ func OptionColor(i bool) TemplateOption {
 	}
 }
 
+// OptionFunctions allows the setting a functions option to configure the
+// template.
+func OptionFunctions(i map[string]interface{}) TemplateOption {
+	return func(opt TemplateOptions) {
+		opt.SetFunctions(i)
+	}
+}
+
 // Template represents a view that will be rendered by the UI.
 type Template struct {
 	format   string
@@ -81,12 +95,17 @@ func NewTemplate(t string, options ...TemplateOption) *Template {
 		option(opt)
 	}
 
-	renderer := ttemplate.New(opt.Name())
-	renderer.Funcs(map[string]interface{}{
+	funcs := map[string]interface{}{
 		"indent": indent,
 		"red":    red(opt.color),
 		"green":  green(opt.color),
-	})
+	}
+	for k, v := range opt.functions {
+		funcs[k] = v
+	}
+
+	renderer := ttemplate.New(opt.Name())
+	renderer.Funcs(funcs)
 
 	return &Template{
 		format:   opt.format,
