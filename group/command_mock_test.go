@@ -101,3 +101,17 @@ func (mr *MockCommandMockRecorder) Synopsis() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synopsis", reflect.TypeOf((*MockCommand)(nil).Synopsis))
 }
+
+// Usages mocks base method
+func (m *MockCommand) Usages() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Usages")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Usages indicates an expected call of Usages
+func (mr *MockCommandMockRecorder) Usages() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usages", reflect.TypeOf((*MockCommand)(nil).Usages))
+}

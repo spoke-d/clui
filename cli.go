@@ -49,6 +49,9 @@ type Command interface {
 	// parsed before running the command.
 	FlagSet() *flagset.FlagSet
 
+	// Usages returns various usages that can be used for the command.
+	Usages() []string
+
 	// Help should return a long-form help text that includes the command-line
 	// usage. A brief few sentences explaining the function of the command, and
 	// the complete list of flags the command accepts.
@@ -395,7 +398,8 @@ func (c *CLI) writeHelp(command string) (Errno, error) {
 		header = c.header
 	}
 
-	res, err := c.helpFunc(
+	fn := help.BasicFunc(fmt.Sprintf("%s %s", c.name, subCommand))
+	res, err := fn(
 		help.OptionCommands(shims),
 		help.OptionHeader(header),
 		help.OptionHint(hint),
@@ -437,7 +441,8 @@ func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 		return EPerm, errors.WithStack(err)
 	}
 
-	res, err := c.helpFunc(
+	fn := help.BasicFunc(fmt.Sprintf("%s %s", c.name, subCommand))
+	res, err := fn(
 		help.OptionCommands(shims),
 		help.OptionHeader(header),
 		help.OptionHint(hint),
@@ -445,6 +450,7 @@ func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 		help.OptionTemplate(help.CommandHelpTemplate),
 		help.OptionHelp(command.Help()),
 		help.OptionFlags(flags),
+		help.OptionUsages(command.Usages()),
 		help.OptionErr(operatorErr),
 	)
 	if err != nil {

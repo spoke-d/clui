@@ -36,6 +36,10 @@ func (v *versionCmd) FlagSet() *flagset.FlagSet {
 	return v.flagSet
 }
 
+func (v *versionCmd) Usages() []string {
+	return []string{}
+}
+
 func (v *versionCmd) Help() string {
 	return `
 Show the current client version along with optionally

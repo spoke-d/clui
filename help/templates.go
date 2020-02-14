@@ -49,7 +49,12 @@ Usage:
 
 {{- if gt (len .Flags) 0 }}
 {{range $flag := .Flags }}
-    {{green $.Name}}  {{$flag}}
+    {{green $.Name}} {{$flag}}
+{{- end}}
+{{- end}}
+{{- if gt (len .Usages) 0 }}
+{{range $usage := .Usages }}
+    {{green $.Name}} {{$usage}}
 {{- end}}
 {{- end}}
 {{- end}}

@@ -35,6 +35,10 @@ func (v *configShowCmd) FlagSet() *flagset.FlagSet {
 	return v.flagSet
 }
 
+func (v *configShowCmd) Usages() []string {
+	return []string{}
+}
+
 func (v *configShowCmd) Help() string {
 	return `
 Show the current key and values of a configuration found

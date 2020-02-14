@@ -22,6 +22,9 @@ type Command interface {
 	// parsed before running the command.
 	FlagSet() *flagset.FlagSet
 
+	// Usages returns various usages that can be used for the command.
+	Usages() []string
+
 	// Help should return a long-form help text that includes the command-line
 	// usage. A brief few sentences explaining the function of the command, and
 	// the complete list of flags the command accepts.

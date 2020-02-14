@@ -38,6 +38,11 @@ func (c *Text) FlagSet() *flagset.FlagSet {
 	return c.flagSet
 }
 
+// Usages returns various usages that can be used for the command.
+func (c *Text) Usages() []string {
+	return make([]string, 0)
+}
+
 // Help should return a long-form help text that includes the command-line
 // usage. A brief few sentences explaining the function of the command, and
 // the complete list of flags the command accepts.

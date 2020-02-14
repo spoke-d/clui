@@ -26,6 +26,7 @@ type HelpOptions interface {
 	SetErr(string)
 	SetCommands(map[string]Command)
 	SetFlags([]string)
+	SetUsages([]string)
 	SetFormat(string)
 	SetColor(bool)
 	SetTemplate(string)
@@ -42,6 +43,7 @@ type help struct {
 	err      string
 	commands map[string]Command
 	flags    []string
+	usages   []string
 	format   string
 	color    bool
 	template string
@@ -69,6 +71,10 @@ func (s *help) SetCommands(p map[string]Command) {
 
 func (s *help) SetFlags(p []string) {
 	s.flags = p
+}
+
+func (s *help) SetUsages(p []string) {
+	s.usages = p
 }
 
 func (s *help) SetFormat(p string) {
@@ -128,6 +134,14 @@ func OptionCommands(i map[string]Command) HelpOption {
 func OptionFlags(i []string) HelpOption {
 	return func(opt HelpOptions) {
 		opt.SetFlags(i)
+	}
+}
+
+// OptionUsages allows the setting a commands option to configure
+// the group.
+func OptionUsages(i []string) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetUsages(i)
 	}
 }
 
@@ -213,6 +227,7 @@ func BasicFunc(name string) Func {
 			Err      string
 			Commands []nameHelp
 			Flags    []string
+			Usages   []string
 		}{
 			Name:     name,
 			Header:   opt.header,
@@ -221,6 +236,7 @@ func BasicFunc(name string) Func {
 			Err:      opt.err,
 			Commands: serialized,
 			Flags:    opt.flags,
+			Usages:   opt.usages,
 		}); err != nil {
 			return "", errors.WithStack(err)
 		}
