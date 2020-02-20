@@ -457,6 +457,11 @@ func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 		return EPerm, errors.WithStack(err)
 	}
 	c.ui.Info(res)
+
+	// If there is an operator error, then ensure we use the right exit code.
+	if operatorErr != "" {
+		return EPerm, nil
+	}
 	return EOK, nil
 }
 
