@@ -6,8 +6,10 @@ github.com/mattn/go-isatty v0.0.11 h1:FxPOTFNqGkuDUGi3H/qkUbQO4ZiBa2brKq5r0l8TGe
 github.com/mattn/go-isatty v0.0.11/go.mod h1:PhnuNfih5lzO57/f3n+odYbM4JtupLOxQOAqxQCu2WE=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
-github.com/spoke-d/task v0.0.0-20200108212702-9fcc76e32826 h1:ENT4M0nlhocTaO2u04+1/G7TVzlDMJWLYMiSUKiOrvg=
-github.com/spoke-d/task v0.0.0-20200108212702-9fcc76e32826/go.mod h1:VXo+gym8OlkZKvOnOLDyyKpTbS0I31pvhIsfQSj0qlE=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/spoke-d/task v0.0.0-20200222195726-3dc1ad2ca619 h1:mNGBnyoRC+KV2X4qKP97edbGAkZ1AHcfIFhXiQDaq/s=
+github.com/spoke-d/task v0.0.0-20200222195726-3dc1ad2ca619/go.mod h1:VXo+gym8OlkZKvOnOLDyyKpTbS0I31pvhIsfQSj0qlE=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20200109152110-61a87790db17 h1:nVJ3guKA9qdkEQ3TUdXI9QSINo2CUPM/cySEvw2w8I0=
 golang.org/x/crypto v0.0.0-20200109152110-61a87790db17/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=

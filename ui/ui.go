@@ -2,6 +2,7 @@ package ui
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -80,7 +81,7 @@ func (u *BasicUI) ask(query string, secret bool) (string, error) {
 	lineCh := make(chan string, 1)
 
 	t := tomb.New()
-	err := t.Go(func() error {
+	err := t.Go(func(_ context.Context) error {
 		var (
 			line string
 			err  error
