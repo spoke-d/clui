@@ -21,6 +21,7 @@ type GlobalArgs struct {
 	isHelp, isVersion, isDebug         bool
 	requiresInstall, requiresUninstall bool
 	requiresNoColor                    bool
+	requiresNoSubKeys                  bool
 }
 
 // NewGlobalArgs creates a new GlobalArgs type for processing arguments passed
@@ -77,6 +78,11 @@ func (a *GlobalArgs) RequiresNoColor() bool {
 	return a.requiresNoColor
 }
 
+// RequiresNoSubKeys returns if the help should include subkeys.
+func (a *GlobalArgs) RequiresNoSubKeys() bool {
+	return a.requiresNoSubKeys
+}
+
 // Process consumes the arguments and correctly separates them between global
 // flags and arguments and command flags and arguments.
 func (a *GlobalArgs) Process(args []string) error {
@@ -96,6 +102,8 @@ func (a *GlobalArgs) Process(args []string) error {
 			a.isDebug = true
 		case "--no-color":
 			a.requiresNoColor = true
+		case "--no-sub-keys":
+			a.requiresNoSubKeys = true
 		case "--autocomplete-install":
 			a.requiresInstall = true
 		case "--autocomplete-uninstall":

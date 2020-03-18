@@ -28,7 +28,7 @@ func NewText(help, synopsis string) *Text {
 	return &Text{
 		helpText:     help,
 		synopsisText: strings.TrimSpace(synopsis),
-		flagSet:      flagset.New("text-command", flag.ExitOnError),
+		flagSet:      flagset.New("text-command", flag.ContinueOnError),
 	}
 }
 

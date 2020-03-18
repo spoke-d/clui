@@ -15,6 +15,7 @@ type configShowCmd struct {
 	flagSet *flagset.FlagSet
 
 	template string
+	test     bool
 	server   bool
 }
 
@@ -29,6 +30,7 @@ func configShowCmdFn(ui clui.UI) clui.Command {
 
 func (v *configShowCmd) init() {
 	v.flagSet.StringVar(&v.template, "template", "{{.Key}}	{{.Value}}", "Template for show key and values")
+	v.flagSet.BoolVar(&v.test, "test", false, "test")
 }
 
 func (v *configShowCmd) FlagSet() *flagset.FlagSet {

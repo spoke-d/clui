@@ -13,7 +13,7 @@ func TestFindChildren(t *testing.T) {
 
 	t.Run("empty", func(t *testing.T) {
 		group := group.New()
-		children, err := FindChildren(group, "")
+		children, err := FindChildren(group, "", true)
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
@@ -24,7 +24,7 @@ func TestFindChildren(t *testing.T) {
 
 	t.Run("empty group", func(t *testing.T) {
 		group := group.New()
-		children, err := FindChildren(group, "foo bar")
+		children, err := FindChildren(group, "foo bar", true)
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
@@ -37,7 +37,7 @@ func TestFindChildren(t *testing.T) {
 		group := group.New()
 		group.Add("foo bar", nil)
 
-		_, err := FindChildren(group, "foo")
+		_, err := FindChildren(group, "foo", true)
 		if expected, actual := "not found: \"foo bar\"", err.Error(); expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}
@@ -51,8 +51,27 @@ func TestFindChildren(t *testing.T) {
 
 		group := group.New()
 		group.Add("foo bar", cmd)
+		group.Add("foo bar sub", cmd)
 
-		children, err := FindChildren(group, "foo")
+		children, err := FindChildren(group, "foo", true)
+		if expected, actual := true, err == nil; expected != actual {
+			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
+		}
+		if expected, actual := map[string]Command{"foo bar": cmd, "foo bar sub": cmd}, children; !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+	})
+
+	t.Run("group no subs", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		cmd := NewMockCommand(ctrl)
+
+		group := group.New()
+		group.Add("foo bar", cmd)
+
+		children, err := FindChildren(group, "foo", false)
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
 		}

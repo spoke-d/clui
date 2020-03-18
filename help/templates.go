@@ -12,6 +12,7 @@ const BasicHelpTemplate = `
 Did you mean?
         {{green .Hint}}
 {{end}}
+{{- if .ShowHelp }}
 Usage: {{green .Name}} [--version] [--help] [--debug] <command> [<args>]
 
 {{- if gt (len .Commands) 0 }}
@@ -27,6 +28,7 @@ Global Flags:
         --debug        Show all debug messages
     -h, --help         Print command help
         --version      Print client version
+{{- end}}
 `
 
 // CommandHelpTemplate represents a template for rendering the help for commands
@@ -36,12 +38,15 @@ const CommandHelpTemplate = `
 Found some issues:
 
     {{red .Err}}
+
+See {{ print " --help" | print .Name | green }} for more information.
 {{end -}}
 {{- if .Hint }}
 Did you mean?
     {{printf "%s\n" .Hint | green}}
 
 {{end -}}
+{{- if .ShowHelp }}
 {{- if .Name}}
 Usage:
 
@@ -75,4 +80,5 @@ Global Flags:
         --debug        Show all debug messages
     -h, --help         Print command help
         --version      Print client version
+{{- end}}
 `
