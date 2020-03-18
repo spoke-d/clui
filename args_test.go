@@ -134,8 +134,6 @@ func TestGlobalArgs(t *testing.T) {
 		}
 	})
 
-	//
-
 	t.Run("command args", func(t *testing.T) {
 		group := group.New()
 		group.Add("a b", nil)
@@ -168,7 +166,10 @@ func TestGlobalArgs(t *testing.T) {
 		if expected, actual := "a b", args.SubCommand(); expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
 		}
-		if expected, actual := []string{"c", "--flag"}, args.SubCommandArgs(); !reflect.DeepEqual(expected, actual) {
+		if expected, actual := []string{"c"}, args.SubCommandArgs(); !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+		if expected, actual := []string{"--flag"}, args.SubCommandFlags(); !reflect.DeepEqual(expected, actual) {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
 		}
 		if expected, actual := []string(nil), args.CommandFlags(); !reflect.DeepEqual(expected, actual) {
@@ -188,7 +189,10 @@ func TestGlobalArgs(t *testing.T) {
 		if expected, actual := "a b", args.SubCommand(); expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
 		}
-		if expected, actual := []string{"--flag", "c"}, args.SubCommandArgs(); !reflect.DeepEqual(expected, actual) {
+		if expected, actual := []string{"c"}, args.SubCommandArgs(); !reflect.DeepEqual(expected, actual) {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+		if expected, actual := []string{"--flag"}, args.SubCommandFlags(); !reflect.DeepEqual(expected, actual) {
 			t.Errorf("expected: %v, actual: %v", expected, actual)
 		}
 		if expected, actual := []string(nil), args.CommandFlags(); !reflect.DeepEqual(expected, actual) {

@@ -15,8 +15,9 @@ type GlobalArgs struct {
 	commands     *group.Group
 	commandFlags []string
 
-	subCommand     string
-	subCommandArgs []string
+	subCommand      string
+	subCommandArgs  []string
+	subCommandFlags []string
 
 	isHelp, isVersion, isDebug         bool
 	requiresInstall, requiresUninstall bool
@@ -40,6 +41,11 @@ func (a *GlobalArgs) SubCommand() string {
 // SubCommandArgs returns the sub command arguments.
 func (a *GlobalArgs) SubCommandArgs() []string {
 	return a.subCommandArgs
+}
+
+// SubCommandFlags returns the sub command flags.
+func (a *GlobalArgs) SubCommandFlags() []string {
+	return a.subCommandFlags
 }
 
 // CommandFlags returns the command arguments.
@@ -170,9 +176,31 @@ func (a *GlobalArgs) Process(args []string) error {
 			}
 
 			// The remaining processed the subCommand arguments
-			a.subCommandArgs = processed[i+1:]
+
+			a.subCommandArgs = removeFlags(processed[i+1:])
+			a.subCommandFlags = removeNonFlags(processed[i+1:])
 		}
 	}
 
 	return nil
+}
+
+func removeFlags(args []string) []string {
+	var result []string
+	for _, v := range args {
+		if !strings.HasPrefix(v, "-") {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func removeNonFlags(args []string) []string {
+	var result []string
+	for _, v := range args {
+		if strings.HasPrefix(v, "-") {
+			result = append(result, v)
+		}
+	}
+	return result
 }

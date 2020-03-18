@@ -312,7 +312,7 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Run the command
-	if err := command.FlagSet().Parse(c.args.SubCommandArgs()); err != nil {
+	if err := command.FlagSet().Parse(c.args.SubCommandFlags()); err != nil {
 		return c.commandHelp(command, err.Error())
 	}
 
@@ -327,13 +327,7 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Remove the flags, those are handled by the flagset.
-	var subCmdArgs []string
-	for _, v := range c.args.SubCommandArgs() {
-		if !strings.HasPrefix(v, "-") {
-			subCmdArgs = append(subCmdArgs, v)
-		}
-	}
-	if err := command.Init(subCmdArgs, c.args.Debug()); err != nil {
+	if err := command.Init(c.args.SubCommandArgs(), c.args.Debug()); err != nil {
 		return c.commandHelp(command, err.Error())
 	}
 
