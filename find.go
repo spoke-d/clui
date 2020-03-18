@@ -10,7 +10,7 @@ import (
 
 // FindChildren returns the sub commands.
 // This will only contain immediate sub commands.
-func FindChildren(commands *group.Group, prefix string) (map[string]Command, error) {
+func FindChildren(commands *group.Group, prefix string, includeSubKeys bool) (map[string]Command, error) {
 	// if our prefix isn't empty, make sure it ends in ' '
 	if prefix != "" && prefix[len(prefix)-1] != ' ' {
 		prefix += " "
@@ -20,9 +20,11 @@ func FindChildren(commands *group.Group, prefix string) (map[string]Command, err
 	var keys []string
 	commands.WalkPrefix(prefix, func(k string, v radix.Value) bool {
 		// Ignore any sub-sub keys, i.e. "foo bar baz" when we want "foo bar"
-		if !strings.Contains(k[len(prefix):], " ") {
-			keys = append(keys, k)
+		if !includeSubKeys && strings.Contains(k[len(prefix):], " ") {
+			return false
 		}
+
+		keys = append(keys, k)
 
 		return false
 	})

@@ -30,6 +30,7 @@ type HelpOptions interface {
 	SetFormat(string)
 	SetColor(bool)
 	SetTemplate(string)
+	SetShowHelp(bool)
 }
 
 // HelpOption captures a tweak that can be applied to the Help.
@@ -46,6 +47,7 @@ type help struct {
 	usages   []string
 	format   string
 	color    bool
+	showHelp bool
 	template string
 }
 
@@ -83,6 +85,10 @@ func (s *help) SetFormat(p string) {
 
 func (s *help) SetColor(p bool) {
 	s.color = p
+}
+
+func (s *help) SetShowHelp(p bool) {
+	s.showHelp = p
 }
 
 func (s *help) SetTemplate(p string) {
@@ -169,6 +175,14 @@ func OptionTemplate(i string) HelpOption {
 	}
 }
 
+// OptionShowHelp allows the setting a color option to configure
+// the group.
+func OptionShowHelp(i bool) HelpOption {
+	return func(opt HelpOptions) {
+		opt.SetShowHelp(i)
+	}
+}
+
 // Func is the type of the function that is responsible for generating the
 // help output when the CLI must show the general help text.
 type Func func(...HelpOption) (string, error)
@@ -228,6 +242,7 @@ func BasicFunc(name string) Func {
 			Commands []nameHelp
 			Flags    []string
 			Usages   []string
+			ShowHelp bool
 		}{
 			Name:     name,
 			Header:   opt.header,
@@ -237,6 +252,7 @@ func BasicFunc(name string) Func {
 			Commands: serialized,
 			Flags:    opt.flags,
 			Usages:   opt.usages,
+			ShowHelp: opt.showHelp,
 		}); err != nil {
 			return "", errors.WithStack(err)
 		}

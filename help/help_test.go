@@ -12,7 +12,9 @@ func TestBasicFunc(t *testing.T) {
 
 	t.Run("no commands", func(t *testing.T) {
 		helpFn := BasicFunc("foo")
-		result, err := helpFn()
+		result, err := helpFn(
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -42,10 +44,13 @@ Global Flags:
 		cmdFoo.EXPECT().Synopsis().Return("foo command")
 
 		helpFn := BasicFunc("foo")
-		result, err := helpFn(OptionCommands(map[string]Command{
-			"version":         cmdVersion,
-			"foo bar baz xxx": cmdFoo,
-		}))
+		result, err := helpFn(
+			OptionCommands(map[string]Command{
+				"version":         cmdVersion,
+				"foo bar baz xxx": cmdFoo,
+			}),
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -80,10 +85,14 @@ Global Flags:
 		cmdFoo.EXPECT().Synopsis().Return("foo command")
 
 		helpFn := BasicFunc("foo")
-		result, err := helpFn(OptionCommands(map[string]Command{
-			"version":         cmdVersion,
-			"foo bar baz xxx": cmdFoo,
-		}), OptionFormat("{{.Name}}"))
+		result, err := helpFn(
+			OptionCommands(map[string]Command{
+				"version":         cmdVersion,
+				"foo bar baz xxx": cmdFoo,
+			}),
+			OptionFormat("{{.Name}}"),
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -118,10 +127,14 @@ Global Flags:
 		cmdFoo.EXPECT().Synopsis().Return("foo command")
 
 		helpFn := BasicFunc("foo")
-		result, err := helpFn(OptionCommands(map[string]Command{
-			"version":         cmdVersion,
-			"foo bar baz xxx": cmdFoo,
-		}), OptionHeader("**HEADER**"))
+		result, err := helpFn(
+			OptionCommands(map[string]Command{
+				"version":         cmdVersion,
+				"foo bar baz xxx": cmdFoo,
+			}),
+			OptionHeader("**HEADER**"),
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -158,10 +171,15 @@ Global Flags:
 		cmdFoo.EXPECT().Synopsis().Return("foo command")
 
 		helpFn := BasicFunc("foo")
-		result, err := helpFn(OptionCommands(map[string]Command{
-			"version":         cmdVersion,
-			"foo bar baz xxx": cmdFoo,
-		}), OptionHeader("**HEADER**"), OptionHint("foo"))
+		result, err := helpFn(
+			OptionCommands(map[string]Command{
+				"version":         cmdVersion,
+				"foo bar baz xxx": cmdFoo,
+			}),
+			OptionHeader("**HEADER**"),
+			OptionHint("foo"),
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -189,6 +207,42 @@ Global Flags:
 			t.Errorf("expected: %v, actual: %v", expected, actual)
 		}
 	})
+
+	t.Run("hint without help", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		cmdVersion := NewMockCommand(ctrl)
+		cmdVersion.EXPECT().Synopsis().Return("returns the version")
+
+		cmdFoo := NewMockCommand(ctrl)
+		cmdFoo.EXPECT().Synopsis().Return("foo command")
+
+		helpFn := BasicFunc("foo")
+		result, err := helpFn(
+			OptionCommands(map[string]Command{
+				"version":         cmdVersion,
+				"foo bar baz xxx": cmdFoo,
+			}),
+			OptionHeader("**HEADER**"),
+			OptionHint("foo"),
+			OptionShowHelp(false),
+		)
+
+		if expected, actual := true, err == nil; expected != actual {
+			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
+		}
+		required := strings.TrimSpace(`
+**HEADER**
+
+Did you mean?
+        foo
+
+`) + "\n"
+		if expected, actual := required, result; expected != actual {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+	})
 }
 
 func TestComandFunc(t *testing.T) {
@@ -196,7 +250,11 @@ func TestComandFunc(t *testing.T) {
 
 	t.Run("no commands", func(t *testing.T) {
 		helpFn := BasicFunc("foo")
-		result, err := helpFn(OptionErr("something went wrong"), OptionTemplate(CommandHelpTemplate))
+		result, err := helpFn(
+			OptionErr("something went wrong"),
+			OptionTemplate(CommandHelpTemplate),
+			OptionShowHelp(true),
+		)
 
 		if expected, actual := true, err == nil; expected != actual {
 			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
@@ -205,6 +263,8 @@ func TestComandFunc(t *testing.T) {
 Found some issues:
 
     something went wrong
+
+See foo --help for more information.
 
 Usage:
 
@@ -218,6 +278,29 @@ Global Flags:
         --debug        Show all debug messages
     -h, --help         Print command help
         --version      Print client version
+`[1:]
+		if expected, actual := required, result; expected != actual {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+	})
+
+	t.Run("no commands without help", func(t *testing.T) {
+		helpFn := BasicFunc("foo")
+		result, err := helpFn(
+			OptionErr("something went wrong"),
+			OptionTemplate(CommandHelpTemplate),
+			OptionShowHelp(false),
+		)
+
+		if expected, actual := true, err == nil; expected != actual {
+			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
+		}
+		required := `
+Found some issues:
+
+    something went wrong
+
+See foo --help for more information.
 `[1:]
 		if expected, actual := required, result; expected != actual {
 			t.Errorf("expected: %v, actual: %v", expected, actual)

@@ -312,7 +312,7 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Run the command
-	if err := command.FlagSet().Parse(c.args.SubCommandArgs()); err != nil {
+	if err := command.FlagSet().Parse(c.args.SubCommandFlags()); err != nil {
 		return c.commandHelp(command, err.Error())
 	}
 
@@ -327,13 +327,7 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Remove the flags, those are handled by the flagset.
-	var subCmdArgs []string
-	for _, v := range c.args.SubCommandArgs() {
-		if !strings.HasPrefix(v, "-") {
-			subCmdArgs = append(subCmdArgs, v)
-		}
-	}
-	if err := command.Init(subCmdArgs, c.args.Debug()); err != nil {
+	if err := command.Init(c.args.SubCommandArgs(), c.args.Debug()); err != nil {
 		return c.commandHelp(command, err.Error())
 	}
 
@@ -376,7 +370,7 @@ func (c *CLI) subCommandParent() string {
 }
 
 func (c *CLI) writeHelp(command string) (Errno, error) {
-	children, err := FindChildren(c.commands, command)
+	children, err := FindChildren(c.commands, command, !c.args.RequiresNoSubKeys())
 	if err != nil {
 		return EPerm, errors.WithStack(err)
 	}
@@ -405,6 +399,7 @@ func (c *CLI) writeHelp(command string) (Errno, error) {
 		help.OptionHint(hint),
 		help.OptionColor(!c.args.RequiresNoColor()),
 		help.OptionTemplate(help.BasicHelpTemplate),
+		help.OptionShowHelp(hint == ""),
 	)
 	if err != nil {
 		return EPerm, errors.WithStack(err)
@@ -416,7 +411,7 @@ func (c *CLI) writeHelp(command string) (Errno, error) {
 func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 	subCommand := c.args.SubCommand()
 
-	children, err := FindChildren(c.commands, subCommand)
+	children, err := FindChildren(c.commands, subCommand, !c.args.RequiresNoSubKeys())
 	if err != nil {
 		return EPerm, errors.WithStack(err)
 	}
@@ -452,6 +447,7 @@ func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 		help.OptionFlags(flags),
 		help.OptionUsages(command.Usages()),
 		help.OptionErr(operatorErr),
+		help.OptionShowHelp(hint == "" && operatorErr == ""),
 	)
 	if err != nil {
 		return EPerm, errors.WithStack(err)
