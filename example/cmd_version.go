@@ -55,7 +55,7 @@ func (v *versionCmd) Synopsis() string {
 	return "Show client and server version."
 }
 
-func (v *versionCmd) Init([]string, bool) error {
+func (v *versionCmd) Init([]string, commands.CommandContext) error {
 	return nil
 }
 

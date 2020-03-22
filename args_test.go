@@ -85,6 +85,19 @@ func TestGlobalArgs(t *testing.T) {
 		}
 	})
 
+	t.Run("dev-mode args", func(t *testing.T) {
+		group := group.New()
+
+		args := NewGlobalArgs(group)
+		err := args.Process([]string{"--dev-mode"})
+		if expected, actual := true, err == nil; expected != actual {
+			t.Errorf("expected: %v, actual: %v, err: %v", expected, actual, err)
+		}
+		if expected, actual := true, args.DevMode(); expected != actual {
+			t.Errorf("expected: %v, actual: %v", expected, actual)
+		}
+	})
+
 	t.Run("no-color args", func(t *testing.T) {
 		group := group.New()
 

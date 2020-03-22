@@ -63,7 +63,7 @@ func (c *Text) Synopsis() string {
 // Init is called with all the args required to run a command.
 // This is separated from Run, to allow the preperation of a command, before
 // it's run.
-func (c *Text) Init([]string, bool) error {
+func (c *Text) Init([]string, CommandContext) error {
 	return nil
 }
 

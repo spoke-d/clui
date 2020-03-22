@@ -6,6 +6,7 @@ package clui
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	commands "github.com/spoke-d/clui/commands"
 	flagset "github.com/spoke-d/clui/flagset"
 	group "github.com/spoke-d/task/group"
 	reflect "reflect"
@@ -63,7 +64,7 @@ func (mr *MockCommandMockRecorder) Help() *gomock.Call {
 }
 
 // Init mocks base method
-func (m *MockCommand) Init(arg0 []string, arg1 bool) error {
+func (m *MockCommand) Init(arg0 []string, arg1 commands.CommandContext) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Init", arg0, arg1)
 	ret0, _ := ret[0].(error)

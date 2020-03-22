@@ -64,7 +64,7 @@ type Command interface {
 	// Init is called with all the args required to run a command.
 	// This is separated from Run, to allow the preperation of a command, before
 	// it's run.
-	Init([]string, bool) error
+	Init([]string, commands.CommandContext) error
 
 	// Run should run the actual command with the given CLI instance and
 	// command-line arguments. It should return the exit status when it is
@@ -327,7 +327,11 @@ func (c *CLI) Run(args []string) (Errno, error) {
 	}
 
 	// Remove the flags, those are handled by the flagset.
-	if err := command.Init(c.args.SubCommandArgs(), c.args.Debug()); err != nil {
+	ctx := commands.CommandContext{
+		Debug:   c.args.Debug(),
+		DevMode: c.args.DevMode(),
+	}
+	if err := command.Init(c.args.SubCommandArgs(), ctx); err != nil {
 		return c.commandHelp(command, err.Error())
 	}
 

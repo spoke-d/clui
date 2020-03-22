@@ -19,10 +19,10 @@ type GlobalArgs struct {
 	subCommandArgs  []string
 	subCommandFlags []string
 
-	isHelp, isVersion, isDebug         bool
-	requiresInstall, requiresUninstall bool
-	requiresNoColor                    bool
-	requiresNoSubKeys                  bool
+	isHelp, isVersion, isDebug, isDevMode bool
+	requiresInstall, requiresUninstall    bool
+	requiresNoColor                       bool
+	requiresNoSubKeys                     bool
 }
 
 // NewGlobalArgs creates a new GlobalArgs type for processing arguments passed
@@ -58,14 +58,19 @@ func (a *GlobalArgs) Help() bool {
 	return a.isHelp
 }
 
-// Version returns if the operator has passed the help flag.
+// Version returns if the operator has passed the version flag.
 func (a *GlobalArgs) Version() bool {
 	return a.isVersion
 }
 
-// Debug returns if the operator has passed the help flag.
+// Debug returns if the operator has passed the debug flag.
 func (a *GlobalArgs) Debug() bool {
 	return a.isDebug
+}
+
+// DevMode returns if the operator has passed the devMode flag.
+func (a *GlobalArgs) DevMode() bool {
+	return a.isDevMode
 }
 
 // RequiresInstall returns if the operator has passed the requires install flag.
@@ -106,6 +111,8 @@ func (a *GlobalArgs) Process(args []string) error {
 			a.isVersion = true
 		case "--debug":
 			a.isDebug = true
+		case "--dev-mode":
+			a.isDevMode = true
 		case "--no-color":
 			a.requiresNoColor = true
 		case "--no-sub-keys":

@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/spoke-d/clui/commands"
 	"github.com/spoke-d/clui/flagset"
 	"github.com/spoke-d/clui/group/distance"
 	"github.com/spoke-d/clui/radix"
@@ -37,7 +38,7 @@ type Command interface {
 	// Init is called with all the args required to run a command.
 	// This is separated from Run, to allow the preperation of a command, before
 	// it's run.
-	Init([]string, bool) error
+	Init([]string, commands.CommandContext) error
 
 	// Run should run the actual command with the given CLI instance and
 	// command-line arguments. It should return the exit status when it is

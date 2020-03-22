@@ -52,7 +52,7 @@ func (v *configShowCmd) Synopsis() string {
 	return "Show configuration."
 }
 
-func (v *configShowCmd) Init(args []string, debug bool) error {
+func (v *configShowCmd) Init(args []string, ctx commands.CommandContext) error {
 	return nil
 }
 
