@@ -374,7 +374,8 @@ func (c *CLI) subCommandParent() string {
 }
 
 func (c *CLI) writeHelp(command string) (Errno, error) {
-	children, err := FindChildren(c.commands, command, !c.args.RequiresNoSubKeys())
+	showSubKeys := command != "" && !c.args.RequiresNoSubKeys()
+	children, err := FindChildren(c.commands, command, showSubKeys)
 	if err != nil {
 		return EPerm, errors.WithStack(err)
 	}
@@ -414,8 +415,9 @@ func (c *CLI) writeHelp(command string) (Errno, error) {
 
 func (c *CLI) commandHelp(command Command, operatorErr string) (Errno, error) {
 	subCommand := c.args.SubCommand()
+	showSubKeys := subCommand != "" && !c.args.RequiresNoSubKeys()
 
-	children, err := FindChildren(c.commands, subCommand, !c.args.RequiresNoSubKeys())
+	children, err := FindChildren(c.commands, subCommand, showSubKeys)
 	if err != nil {
 		return EPerm, errors.WithStack(err)
 	}
