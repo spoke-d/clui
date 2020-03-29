@@ -123,10 +123,10 @@ func (a *Ask) Password(question string) (string, error) {
 		inFirst := string(pwd)
 		inFirst = strings.TrimSuffix(inFirst, "\n")
 
-		fmt.Fprintf(a.output, "Again: ")
+		fmt.Fprintf(a.output, "\nAgain: ")
 		pwd, _ = terminal.ReadPassword(0)
 
-		fmt.Fprintf(a.output, "")
+		fmt.Fprintf(a.output, "\n")
 		inSecond := string(pwd)
 		inSecond = strings.TrimSuffix(inSecond, "\n")
 
