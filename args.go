@@ -195,7 +195,7 @@ func (a *GlobalArgs) Process(args []string) error {
 func removeFlags(args []string) []string {
 	var result []string
 	for _, v := range args {
-		if !strings.HasPrefix(v, "-") {
+		if v == "-" || !strings.HasPrefix(v, "-") {
 			result = append(result, v)
 		}
 	}
