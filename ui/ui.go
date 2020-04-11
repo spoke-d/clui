@@ -80,7 +80,7 @@ func (u *BasicUI) ask(query string, secret bool) (string, error) {
 	// Ask for input in a go-routine so that we can ignore it.
 	lineCh := make(chan string, 1)
 
-	t := tomb.New()
+	t := tomb.New(false)
 	err := t.Go(func(_ context.Context) error {
 		var (
 			line string
