@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -70,7 +71,7 @@ func (c *Text) Init([]string, CommandContext) error {
 // Run subscribes to the group for executing the various run commands.
 // The subscriptions to the group are handled by the callee.
 func (c *Text) Run(group *group.Group) {
-	group.Add(func() error {
+	group.Add(func(context.Context) error {
 		return ErrShowHelp
 	}, Disguard)
 }
