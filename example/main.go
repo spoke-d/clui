@@ -15,6 +15,8 @@ func main() {
 	cli.Add("version", versionCmdFn)
 	cli.Add("config show", configShowCmdFn)
 	cli.Add("config show something", configShowCmdFn)
+	cli.Add("config show else", configShowCmdFn)
+	cli.Add("config list", configShowCmdFn)
 
 	code, err := cli.Run(os.Args[1:])
 	if err != nil {
