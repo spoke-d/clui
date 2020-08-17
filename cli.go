@@ -240,7 +240,7 @@ func New(name, version, header string, options ...CLIOption) *CLI {
 		return commands.NewText(s, TemplatePlaceHolder)
 	}))
 
-	return &CLI{
+	cli := &CLI{
 		name:          name,
 		version:       version,
 		header:        header,
@@ -248,8 +248,10 @@ func New(name, version, header string, options ...CLIOption) *CLI {
 		helpFunc:      opt.HelpFunc(name),
 		commands:      store,
 		autoCompleter: opt.AutoCompleter(store, opt.fileSystem),
-		args:          NewGlobalArgs(store),
 	}
+
+	store.Add("shell", commands.NewShell(runnable(cli), store))
+	return cli
 }
 
 // Add inserts a new command to the CLI.
@@ -259,6 +261,8 @@ func (c *CLI) Add(key string, cmdFn CommandFn) error {
 
 // Run runs the actual CLI bases on the arguments given.
 func (c *CLI) Run(args []string) (Errno, error) {
+	c.args = NewGlobalArgs(c.commands)
+
 	if err := c.commands.Process(); err != nil {
 		return EPerm, err
 	}
@@ -503,4 +507,19 @@ func commandFlags(flags *flagset.FlagSet) ([]string, error) {
 	}
 
 	return data, nil
+}
+
+type runner struct {
+	cli *CLI
+}
+
+func runnable(cli *CLI) runner {
+	return runner{
+		cli: cli,
+	}
+}
+
+func (r runner) Run(args []string) (int, error) {
+	e, err := r.cli.Run(args)
+	return e.Code(), err
 }
