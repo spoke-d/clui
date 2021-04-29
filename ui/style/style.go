@@ -1,141 +1,247 @@
 package style
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-
-	"github.com/mattn/go-isatty"
+	"github.com/pkg/errors"
+	"github.com/spoke-d/clui/ui/color"
 )
 
-var (
-	// NoStyle defines if the output is styleized or not. It's dynamically set to
-	// false or true based on the stdout's file descriptor referring to a terminal
-	// or not. This is a global option and affects all styles. For more control
-	// over each style block use the methods DisableStyle() individually.
-	NoStyle = os.Getenv("TERM") == "dumb" ||
-		(!isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()))
-)
-
-// Attribute defines a single SGR Code
-type Attribute int
-
-const defaultEscapeChars = "\x1b"
-
-// Base attributes
-const (
-	Reset Attribute = iota
-	Bold
-	Faint
-	Italic
-	Underline
-	BlinkSlow
-	BlinkRapid
-	ReverseVideo
-	Concealed
-	CrossedOut
-)
-
-// Foreground text styles
-const (
-	FgBlack Attribute = iota + 30
-	FgRed
-	FgGreen
-	FgYellow
-	FgBlue
-	FgMagenta
-	FgCyan
-	FgWhite
-)
-
-// Foreground Hi-Intensity text styles
-const (
-	FgHiBlack Attribute = iota + 90
-	FgHiRed
-	FgHiGreen
-	FgHiYellow
-	FgHiBlue
-	FgHiMagenta
-	FgHiCyan
-	FgHiWhite
-)
-
-// Background text styles
-const (
-	BgBlack Attribute = iota + 40
-	BgRed
-	BgGreen
-	BgYellow
-	BgBlue
-	BgMagenta
-	BgCyan
-	BgWhite
-)
-
-// Background Hi-Intensity text styles
-const (
-	BgHiBlack Attribute = iota + 100
-	BgHiRed
-	BgHiGreen
-	BgHiYellow
-	BgHiBlue
-	BgHiMagenta
-	BgHiCyan
-	BgHiWhite
-)
-
-// Style defines a custom style object which is defined by SGR parameters.
 type Style struct {
-	params  []Attribute
-	noStyle *bool
+	color     color.RGB
+	underline bool
 }
 
-// New returns a newly created style object.
-func New(value ...Attribute) *Style {
-	return &Style{params: value}
-}
-
-// Format encodes a message by wrapping the value with a style.
-func (c *Style) Format(a string) string {
-	return c.wrap(a)
-}
-
-// wrap wraps the s string with the styles attributes. The string is ready to
-// be printed.
-func (c *Style) wrap(s string) string {
-	if c.isNoStyleSet() {
-		return s
+// ParseStyle allows you to pass a string and attempt parse it into a style.
+// Example:
+//     color=rgb(0,0,0);
+func ParseStyle(src string) (*Style, error) {
+	lex := NewLexer(src)
+	parser := NewParser(lex)
+	ast, err := parser.Run()
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	return fmt.Sprintf("%s%s%s", c.format(), s, c.unformat())
-}
-
-func (c *Style) format() string {
-	return fmt.Sprintf("%s[%sm", defaultEscapeChars, c.sequence())
-}
-
-func (c *Style) unformat() string {
-	return fmt.Sprintf("%s[0m", defaultEscapeChars)
-}
-
-func (c *Style) isNoStyleSet() bool {
-	// check first if we have user setted action
-	if c.noStyle != nil {
-		return *c.noStyle
+	box, err := run(NewBox(&Style{}), ast)
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 
-	// if not return the global option, which is disabled by default
-	return NoStyle
+	return box.Root(), nil
 }
 
-// sequence returns a formatted SGR sequence to be plugged into a "\x1b[...m"
-// an example output might be: "1;36" -> bold cyan
-func (c *Style) sequence() string {
-	format := make([]string, len(c.params))
-	for i, v := range c.params {
-		format[i] = strconv.Itoa(int(v))
+func run(box *Box, e Expression) (*Box, error) {
+	// Useful for debugging.
+	//fmt.Printf("%[1]T %[1]v\n", e)
+
+	switch node := e.(type) {
+	case *QueryExpression:
+		for _, exp := range node.Expressions {
+			var err error
+			box, err = run(box, exp)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+		}
+		return box, nil
+
+	case *ExpressionStatement:
+		return run(box, node.Expression)
+
+	case *InfixExpression:
+		left, err := run(box, node.Left)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		switch node.Token.Type {
+		case ASSIGN:
+		default:
+			return nil, errors.Errorf("unknown operator %q", node.Token.Literal)
+		}
+
+		return run(left, node.Right)
+
+	case *Identifier:
+		return box.Push(node.Token.Literal)
+
+	case *CallExpression:
+		name, ok := node.Name.(*Identifier)
+		if !ok {
+			return nil, errors.Errorf("expected a identifier name %T", node.Name)
+		}
+
+		switch name.Token.Literal {
+		case "rgb":
+			color, err := parseRGBColor(node.Arguments)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return box.Value(color)
+		case "hsv":
+			color, err := parseHSVColor(node.Arguments)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return box.Value(color)
+		case "hsl":
+			color, err := parseHSLColor(node.Arguments)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			return box.Value(color)
+		}
+		return nil, errors.Errorf("unknown constructor %q", name)
+
+	case *Integer:
+		return box.Value(node.Value)
+
+	case *Float:
+		return box.Value(node.Value)
+
+	case *String:
+		return box.Value(node.Token.Literal)
+
+	case *Bool:
+		return box.Value(node.Value)
+
+	case *Empty:
+		return box.Pop()
+	}
+	return nil, RuntimeErrorf("Syntax Error: Unexpected expression %T", e)
+}
+
+type Box struct {
+	root      *Style
+	leaf      string
+	traversed bool
+}
+
+func NewBox(root *Style) *Box {
+	return &Box{root: root}
+}
+
+func (b *Box) Root() *Style {
+	return b.root
+}
+
+func (b *Box) Push(name string) (*Box, error) {
+	switch name {
+	case "color", "underline":
+		b.leaf = name
+		b.traversed = true
+	default:
+		return nil, errors.Errorf("unknown field name %q", name)
+	}
+	return b, nil
+}
+
+func (b *Box) Value(value interface{}) (*Box, error) {
+	if !b.traversed {
+		return nil, errors.Errorf("unable to set value %q", value)
 	}
 
-	return strings.Join(format, ";")
+	switch b.leaf {
+	case "color":
+		switch v := value.(type) {
+		case color.RGB:
+			b.root.color = v
+		default:
+			return nil, errors.Errorf("unable to set the color %q", value)
+		}
+	case "underline":
+		switch v := value.(type) {
+		case bool:
+			b.root.underline = v
+		default:
+			return nil, errors.Errorf("unable to set the underline %q", value)
+		}
+	default:
+		return nil, errors.Errorf("unknown property %q", b.leaf)
+	}
+
+	return b.Pop()
+}
+
+func (b *Box) Pop() (*Box, error) {
+	b.leaf = ""
+	b.traversed = false
+
+	return b, nil
+}
+
+// RuntimeError creates an invalid error.
+type RuntimeError struct {
+	err error
+}
+
+func (e *RuntimeError) Error() string {
+	return e.err.Error()
+}
+
+// RuntimeErrorf defines a sentinel error for invalid index.
+func RuntimeErrorf(msg string, args ...interface{}) error {
+	return &RuntimeError{
+		err: errors.Errorf("Runtime Error: "+msg, args...),
+	}
+}
+
+// IsRuntimeError returns if the error is an ErrInvalidIndex error
+func IsRuntimeError(err error) bool {
+	err = errors.Cause(err)
+	_, ok := err.(*RuntimeError)
+	return ok
+}
+
+func parseRGBColor(args []Expression) (color.RGB, error) {
+	if len(args) != 3 {
+		return color.RGB{}, errors.Errorf("expected 3 arguments to construct a rgb color")
+	}
+
+	var rgb [3]float64
+	for i, v := range args {
+		switch arg := v.(type) {
+		case *Integer:
+			rgb[i] = float64(arg.Value)
+		case *Float:
+			rgb[i] = arg.Value
+		}
+	}
+
+	return color.RGB{R: rgb[0], G: rgb[1], B: rgb[2]}, nil
+}
+
+func parseHSVColor(args []Expression) (color.RGB, error) {
+	if len(args) != 3 {
+		return color.RGB{}, errors.Errorf("expected 3 arguments to construct a hsv color")
+	}
+
+	var hsv [3]float64
+	for i, v := range args {
+		switch arg := v.(type) {
+		case *Integer:
+			hsv[i] = float64(arg.Value)
+		case *Float:
+			hsv[i] = arg.Value
+		}
+	}
+
+	return color.HSV{H: hsv[0], S: hsv[1], V: hsv[2]}.RGB(), nil
+}
+
+func parseHSLColor(args []Expression) (color.RGB, error) {
+	if len(args) != 3 {
+		return color.RGB{}, errors.Errorf("expected 3 arguments to construct a hsl color")
+	}
+
+	var hsl [3]float64
+	for i, v := range args {
+		switch arg := v.(type) {
+		case *Integer:
+			hsl[i] = float64(arg.Value)
+		case *Float:
+			hsl[i] = arg.Value
+		}
+	}
+
+	return color.HSL{H: hsl[0], S: hsl[1], L: hsl[2]}.RGB(), nil
 }

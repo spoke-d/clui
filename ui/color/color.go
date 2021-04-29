@@ -153,7 +153,11 @@ func (c HSV) RGB() RGB {
 		b = x
 	}
 
-	return RGB{R: m + r, G: m + g, B: m + b}
+	return RGB{
+		R: math.Round((m + r) * 255),
+		G: math.Round((m + g) * 255),
+		B: math.Round((m + b) * 255),
+	}
 }
 
 // HSL represents the color hue, saturation and luminance
@@ -236,5 +240,9 @@ func (c HSL) RGB() RGB {
 		b = t2
 	}
 
-	return RGB{R: r, G: g, B: b}
+	return RGB{
+		R: math.Round(r * 255),
+		G: math.Round(g * 255),
+		B: math.Round(b * 255),
+	}
 }
