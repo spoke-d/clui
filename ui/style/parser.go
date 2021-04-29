@@ -44,7 +44,6 @@ func NewParser(lex *Lexer) *Parser {
 		INT:    p.parseInteger,
 		FLOAT:  p.parseFloat,
 		STRING: p.parseString,
-		LPAREN: p.parseGroup,
 		TRUE:   p.parseBool,
 		FALSE:  p.parseBool,
 	}
@@ -170,22 +169,6 @@ func (p *Parser) parseInfixExpression(left Expression) Expression {
 	return expression
 }
 
-func (p *Parser) parseGroup() Expression {
-	p.nextToken()
-	if p.currentToken.Type == LPAREN && p.isCurrentToken(RPAREN) {
-		// This is an empty group, not sure what we should do here.
-		return &Empty{
-			Token: p.currentToken,
-		}
-	}
-
-	exp := p.parseExpression(LOWEST)
-	if !p.expectPeek(RPAREN) {
-		return nil
-	}
-	return exp
-}
-
 func (p *Parser) parseCall(left Expression) Expression {
 	if p.isPeekToken(RPAREN) {
 		currentToken := p.currentToken
@@ -233,10 +216,6 @@ func (p *Parser) peekPrecedence() int {
 
 func (p *Parser) isPeekToken(t TokenType) bool {
 	return p.peekToken.Type == t
-}
-
-func (p *Parser) isCurrentToken(t TokenType) bool {
-	return p.currentToken.Type == t
 }
 
 func (p *Parser) nextToken() {
