@@ -84,7 +84,7 @@ func (p *IndexedPalette) Size() int {
 
 // add is a bulk method for adding a lot of rgb colors with a better sorting.
 func (p *IndexedPalette) add(indices ...index) {
-	num := len(p.colors)
+	var changed bool
 	for _, index := range indices {
 		if _, ok := p.indexed[index.rgb]; ok {
 			i := indexOf(p.colors, index.rgb)
@@ -97,8 +97,9 @@ func (p *IndexedPalette) add(indices ...index) {
 
 		p.indexed[index.rgb] = struct{}{}
 		p.colors = append(p.colors, index)
+		changed = true
 	}
-	if num != len(p.colors) {
+	if !changed {
 		return
 	}
 
