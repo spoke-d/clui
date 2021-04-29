@@ -37,7 +37,7 @@ func NewIndexedPalette() *IndexedPalette {
 }
 
 // Add a RGB color to the index palette.
-func (p *IndexedPalette) Add(rgb RGB, labels []string) {
+func (p *IndexedPalette) Add(rgb RGB, labels ...string) {
 	p.add(index{
 		rgb:    rgb,
 		labels: labels,
@@ -142,7 +142,9 @@ func union(a, b []string) []string {
 //
 
 // TrueColorPalette defines a color palette for a series of colors.
-type TrueColorPalette struct{}
+type TrueColorPalette struct {
+	labelLocator Palette
+}
 
 // NewTrueColorPalette creates a new indexed palette.
 func NewTrueColorPalette() *TrueColorPalette {
@@ -150,14 +152,22 @@ func NewTrueColorPalette() *TrueColorPalette {
 }
 
 // Add a RGB color to the index palette.
-func (p *TrueColorPalette) Add(rgb RGB, labels []string) {}
+func (p *TrueColorPalette) Add(rgb RGB, labels ...string) {
+	p.labelLocator.Add(rgb, labels...)
+}
 
 // Remove a RGB color from the index palette.
-func (p *TrueColorPalette) Remove(rgb RGB) {}
+func (p *TrueColorPalette) Remove(rgb RGB) {
+	p.labelLocator.Remove(rgb)
+}
 
 // Nearest finds the closest RGB color within the palette. Allows for converting
 // between different color palettes.
 func (p *TrueColorPalette) Nearest(rgb RGB) (RGB, []string) {
+	if p.labelLocator != nil {
+		_, labels := p.labelLocator.Nearest(rgb)
+		return rgb, labels
+	}
 	return rgb, nil
 }
 
